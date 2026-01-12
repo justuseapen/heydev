@@ -41,22 +41,30 @@
   </div>
 
   <script type="module">
-    import { createFloatingButton } from './src/index.ts';
+    import { createFloatingButton, createFeedbackPanel } from './src/index.ts';
 
-    // Create the floating button
+    // Create the floating button and feedback panel
     const button = createFloatingButton();
+    const panel = createFeedbackPanel();
 
     // Log events
     const log = document.getElementById('log');
 
     document.addEventListener('heydev:open', () => {
       const p = document.createElement('p');
-      p.textContent = `[${new Date().toLocaleTimeString()}] heydev:open event fired!`;
+      p.textContent = `[${new Date().toLocaleTimeString()}] heydev:open event fired! (panel opening)`;
       log.appendChild(p);
     });
 
-    // Make button available globally for testing
+    document.addEventListener('heydev:close', () => {
+      const p = document.createElement('p');
+      p.textContent = `[${new Date().toLocaleTimeString()}] heydev:close event fired! (panel closing)`;
+      log.appendChild(p);
+    });
+
+    // Make components available globally for testing
     window.heydevButton = button;
+    window.heydevPanel = panel;
   </script>
 </body>
 </html>

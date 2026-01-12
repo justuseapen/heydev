@@ -11,6 +11,11 @@ export {
   type FloatingButtonOptions,
   type FloatingButtonInstance,
 } from './components/FloatingButton';
+export {
+  createFeedbackPanel,
+  type FeedbackPanelOptions,
+  type FeedbackPanelInstance,
+} from './components/FeedbackPanel';
 
 // Utility exports
 export { captureContext, type PageContext } from './utils/context';
