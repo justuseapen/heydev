@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HeyDev Widget Test</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 40px;
+      min-height: 100vh;
+      background: #f5f5f5;
+    }
+    h1 {
+      margin-bottom: 16px;
+    }
+    p {
+      color: #666;
+    }
+    .log {
+      margin-top: 24px;
+      padding: 16px;
+      background: white;
+      border-radius: 8px;
+      font-family: monospace;
+    }
+    .log p {
+      color: #333;
+      margin: 4px 0;
+    }
+  </style>
+</head>
+<body>
+  <h1>HeyDev Widget Test Page</h1>
+  <p>The floating feedback button should appear in the bottom-right corner.</p>
+  <p>Click the button to trigger the 'heydev:open' event.</p>
+
+  <div class="log" id="log">
+    <strong>Event Log:</strong>
+  </div>
+
+  <script type="module">
+    import { createFloatingButton } from './src/index.ts';
+
+    // Create the floating button
+    const button = createFloatingButton();
+
+    // Log events
+    const log = document.getElementById('log');
+
+    document.addEventListener('heydev:open', () => {
+      const p = document.createElement('p');
+      p.textContent = `[${new Date().toLocaleTimeString()}] heydev:open event fired!`;
+      log.appendChild(p);
+    });
+
+    // Make button available globally for testing
+    window.heydevButton = button;
+  </script>
+</body>
+</html>

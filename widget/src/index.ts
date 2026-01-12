@@ -5,6 +5,13 @@
 
 export const VERSION = '0.1.0';
 
+// Component exports
+export {
+  createFloatingButton,
+  type FloatingButtonOptions,
+  type FloatingButtonInstance,
+} from './components/FloatingButton';
+
 // Utility exports
 export { captureContext, type PageContext } from './utils/context';
 export {
