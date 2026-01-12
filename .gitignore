@@ -31,3 +31,4 @@ uploads/
 *.sqlite
 *.sqlite3
 *.db
+server/data/
