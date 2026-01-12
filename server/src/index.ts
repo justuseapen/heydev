@@ -6,7 +6,9 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
+import { serveStatic } from '@hono/node-server/serve-static';
 import { apiKeyAuth } from './middleware/apiKey.js';
+import { uploadRoutes } from './routes/upload.js';
 
 export const VERSION = '0.1.0';
 
@@ -19,6 +21,9 @@ app.use('*', cors());
 app.get('/health', (c) => {
   return c.json({ status: 'ok' });
 });
+
+// Serve uploaded files statically at GET /uploads/:filename
+app.use('/uploads/*', serveStatic({ root: './' }));
 
 // Protected API routes - require API key authentication
 const api = new Hono();
@@ -33,6 +38,9 @@ api.get('/me', (c) => {
     userId: apiKey.userId,
   });
 });
+
+// Mount upload routes under /api/upload (protected)
+api.route('/upload', uploadRoutes);
 
 // Mount protected routes under /api
 app.route('/api', api);
