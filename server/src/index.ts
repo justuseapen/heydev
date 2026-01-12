@@ -10,6 +10,7 @@ import { serveStatic } from '@hono/node-server/serve-static';
 import { apiKeyAuth } from './middleware/apiKey.js';
 import { uploadRoutes } from './routes/upload.js';
 import { transcribeRoutes } from './routes/transcribe.js';
+import { feedbackRoutes } from './routes/feedback.js';
 
 export const VERSION = '0.1.0';
 
@@ -45,6 +46,9 @@ api.route('/upload', uploadRoutes);
 
 // Mount transcription routes under /api/transcribe (protected)
 api.route('/transcribe', transcribeRoutes);
+
+// Mount feedback routes under /api/feedback (protected)
+api.route('/feedback', feedbackRoutes);
 
 // Mount protected routes under /api
 app.route('/api', api);
