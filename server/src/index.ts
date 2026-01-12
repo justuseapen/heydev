@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
+import { apiKeyAuth } from './middleware/apiKey.js';
 
 export const VERSION = '0.1.0';
 
@@ -14,10 +15,27 @@ const app = new Hono();
 // CORS middleware - allow all origins
 app.use('*', cors());
 
-// Health check endpoint
+// Health check endpoint (public)
 app.get('/health', (c) => {
   return c.json({ status: 'ok' });
 });
+
+// Protected API routes - require API key authentication
+const api = new Hono();
+api.use('*', apiKeyAuth);
+
+// Example protected endpoint - returns API key info
+api.get('/me', (c) => {
+  const apiKey = c.get('apiKey');
+  return c.json({
+    id: apiKey.id,
+    createdAt: apiKey.createdAt,
+    userId: apiKey.userId,
+  });
+});
+
+// Mount protected routes under /api
+app.route('/api', api);
 
 // Get port from environment or use default
 const port = parseInt(process.env.PORT || '3000', 10);
