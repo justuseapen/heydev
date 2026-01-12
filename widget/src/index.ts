@@ -14,3 +14,4 @@ export {
   clearCapturedErrors,
   type CapturedError,
 } from './utils/consoleErrors';
+export { getSessionId, clearSessionId } from './utils/session';
