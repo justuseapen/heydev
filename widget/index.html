@@ -41,7 +41,7 @@
   </div>
 
   <script type="module">
-    import { createFloatingButton, createFeedbackPanel, createTextInput, createScreenshotButton, createVoiceButton } from './src/index.ts';
+    import { createFloatingButton, createFeedbackPanel, createTextInput, createScreenshotButton, createVoiceButton, getSessionId } from './src/index.ts';
 
     // Create the floating button and feedback panel
     const button = createFloatingButton();
@@ -89,8 +89,13 @@
     });
 
     // Create voice button
+    // Note: When Web Speech API is unavailable, falls back to MediaRecorder + Whisper API
     const voiceBtn = createVoiceButton({
       container: textareaRow,
+      // Endpoint for Whisper API fallback (requires server running on port 3000)
+      transcribeEndpoint: 'http://localhost:3000/api/transcribe',
+      // Session ID getter for rate limiting
+      getSessionId: getSessionId,
       onTranscript: (text, isFinal) => {
         // Update textarea with transcribed text
         textInput.setValue(text);
@@ -102,13 +107,27 @@
       onRecordingStart: () => {
         const log = document.getElementById('log');
         const p = document.createElement('p');
-        p.textContent = `[${new Date().toLocaleTimeString()}] Voice recording started`;
+        const mode = voiceBtn.isFallbackMode() ? ' (fallback mode)' : ' (native mode)';
+        p.textContent = `[${new Date().toLocaleTimeString()}] Voice recording started${mode}`;
         log.appendChild(p);
       },
       onRecordingStop: () => {
         const log = document.getElementById('log');
         const p = document.createElement('p');
         p.textContent = `[${new Date().toLocaleTimeString()}] Voice recording stopped`;
+        log.appendChild(p);
+      },
+      onTranscribingStart: () => {
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.style.color = 'blue';
+        p.textContent = `[${new Date().toLocaleTimeString()}] Transcribing audio...`;
+        log.appendChild(p);
+      },
+      onTranscribingEnd: () => {
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.textContent = `[${new Date().toLocaleTimeString()}] Transcription complete`;
         log.appendChild(p);
       },
       onError: (error) => {
@@ -119,6 +138,13 @@
         log.appendChild(p);
       }
     });
+
+    // Log which mode is being used
+    const modeLog = document.getElementById('log');
+    const modeP = document.createElement('p');
+    modeP.style.fontWeight = 'bold';
+    modeP.textContent = `[${new Date().toLocaleTimeString()}] Voice mode: ${voiceBtn.isFallbackMode() ? 'Fallback (MediaRecorder + Whisper)' : 'Native (Web Speech API)'}`;
+    modeLog.appendChild(modeP);
 
     // Create the text input inside the textarea container
     const textInput = createTextInput({

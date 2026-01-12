@@ -1,6 +1,7 @@
 /**
  * HeyDev Voice Button Component
  * A button for recording voice input with Web Speech API real-time transcription
+ * Falls back to MediaRecorder + Whisper API when Web Speech API is unavailable
  */
 
 /** CSS styles for the voice button */
@@ -54,6 +55,12 @@ const VOICE_BUTTON_STYLES = `
     border-color: var(--heydev-danger-hover, #dc2626);
   }
 
+  .heydev-voice-btn.is-transcribing {
+    background-color: var(--heydev-primary, #6366f1);
+    border-color: var(--heydev-primary, #6366f1);
+    color: white;
+  }
+
   .heydev-voice-recording-indicator {
     position: absolute;
     top: -4px;
@@ -69,6 +76,15 @@ const VOICE_BUTTON_STYLES = `
   @keyframes heydev-pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.6; transform: scale(0.9); }
+  }
+
+  @keyframes heydev-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .heydev-voice-btn.is-transcribing svg {
+    animation: heydev-spin 1s linear infinite;
   }
 
   .heydev-voice-unsupported {
@@ -87,6 +103,9 @@ const VOICE_BUTTON_STYLES = `
     .heydev-voice-recording-indicator {
       animation: none;
     }
+    .heydev-voice-btn.is-transcribing svg {
+      animation: none;
+    }
   }
 `;
 
@@ -99,6 +118,11 @@ const MIC_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fi
 /** Stop icon SVG */
 const STOP_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
   <path fill-rule="evenodd" d="M2 10a8 8 0 1 1 16 0 8 8 0 0 1-16 0Zm5-2.25A.75.75 0 0 1 7.75 7h4.5a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-.75.75h-4.5a.75.75 0 0 1-.75-.75v-4.5Z" clip-rule="evenodd" />
+</svg>`;
+
+/** Loading spinner icon SVG */
+const LOADING_ICON = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+  <path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 0 1-9.201 2.466l-.312-.311h2.433a.75.75 0 0 0 0-1.5H3.989a.75.75 0 0 0-.75.75v4.242a.75.75 0 0 0 1.5 0v-2.43l.31.31a7 7 0 0 0 11.712-3.138.75.75 0 0 0-1.449-.39Zm1.23-3.723a.75.75 0 0 0 .219-.53V2.929a.75.75 0 0 0-1.5 0V5.36l-.31-.31A7 7 0 0 0 3.239 8.188a.75.75 0 1 0 1.448.389A5.5 5.5 0 0 1 13.89 6.11l.311.31h-2.432a.75.75 0 0 0 0 1.5h4.243a.75.75 0 0 0 .53-.219Z" clip-rule="evenodd" />
 </svg>`;
 
 /** Type declarations for Web Speech API */
@@ -147,6 +171,11 @@ function getSpeechRecognition(): SpeechRecognitionConstructor | null {
   return w.SpeechRecognition || w.webkitSpeechRecognition || null;
 }
 
+/** Check if MediaRecorder is available for fallback */
+function isMediaRecorderSupported(): boolean {
+  return typeof MediaRecorder !== 'undefined' && typeof navigator.mediaDevices !== 'undefined';
+}
+
 export interface VoiceButtonOptions {
   /** Container element to render the button into */
   container?: HTMLElement;
@@ -156,10 +185,18 @@ export interface VoiceButtonOptions {
   onRecordingStart?: () => void;
   /** Callback when recording stops */
   onRecordingStop?: () => void;
+  /** Callback when transcribing starts (fallback mode only) */
+  onTranscribingStart?: () => void;
+  /** Callback when transcribing ends (fallback mode only) */
+  onTranscribingEnd?: () => void;
   /** Callback when an error occurs */
   onError?: (error: string) => void;
   /** Maximum recording duration in seconds (default: 60) */
   maxDuration?: number;
+  /** Endpoint URL for Whisper API transcription (required for fallback mode) */
+  transcribeEndpoint?: string;
+  /** Function to get the current session ID (required for fallback mode) */
+  getSessionId?: () => string;
 }
 
 export interface VoiceButtonInstance {
@@ -167,10 +204,14 @@ export interface VoiceButtonInstance {
   button: HTMLButtonElement | null;
   /** The container element (includes unsupported message if applicable) */
   element: HTMLElement;
-  /** Check if voice recording is supported */
+  /** Check if voice recording is supported (either native or fallback) */
   isSupported: () => boolean;
+  /** Check if using fallback mode (MediaRecorder + Whisper API) */
+  isFallbackMode: () => boolean;
   /** Check if currently recording */
   isRecording: () => boolean;
+  /** Check if currently transcribing (fallback mode only) */
+  isTranscribing: () => boolean;
   /** Start recording */
   startRecording: () => void;
   /** Stop recording */
@@ -183,6 +224,10 @@ export interface VoiceButtonInstance {
 
 /**
  * Creates and renders the voice button component
+ * Supports two modes:
+ * 1. Native mode: Uses Web Speech API for real-time transcription
+ * 2. Fallback mode: Uses MediaRecorder + Whisper API when Speech API unavailable
+ *
  * @param options Configuration options
  * @returns VoiceButton instance with control methods
  */
@@ -193,16 +238,32 @@ export function createVoiceButton(
   const onTranscript = options.onTranscript;
   const onRecordingStart = options.onRecordingStart;
   const onRecordingStop = options.onRecordingStop;
+  const onTranscribingStart = options.onTranscribingStart;
+  const onTranscribingEnd = options.onTranscribingEnd;
   const onError = options.onError;
   const maxDuration = options.maxDuration ?? 60;
+  const transcribeEndpoint = options.transcribeEndpoint;
+  const getSessionId = options.getSessionId;
 
   // Check for Web Speech API support
   const SpeechRecognitionClass = getSpeechRecognition();
-  const isSupported = SpeechRecognitionClass !== null;
+  const hasNativeSupport = SpeechRecognitionClass !== null;
+
+  // Check for MediaRecorder fallback support
+  const hasFallbackSupport = isMediaRecorderSupported();
+
+  // Determine which mode to use
+  const useNativeMode = hasNativeSupport;
+  const useFallbackMode = !hasNativeSupport && hasFallbackSupport;
+  const isSupported = hasNativeSupport || hasFallbackSupport;
 
   // State
   let recording = false;
+  let transcribing = false;
   let recognition: SpeechRecognition | null = null;
+  let mediaRecorder: MediaRecorder | null = null;
+  let mediaStream: MediaStream | null = null;
+  let audioChunks: Blob[] = [];
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let finalTranscript = '';
 
@@ -231,7 +292,9 @@ export function createVoiceButton(
       button: null,
       element,
       isSupported: () => false,
+      isFallbackMode: () => false,
       isRecording: () => false,
+      isTranscribing: () => false,
       startRecording: () => {
         /* no-op: voice not supported */
       },
@@ -262,23 +325,34 @@ export function createVoiceButton(
 
   // Update UI based on state
   const updateUI = () => {
-    button.classList.toggle('is-recording', recording);
-    button.innerHTML = recording ? STOP_ICON : MIC_ICON;
-    button.setAttribute(
-      'aria-label',
-      recording ? 'Stop voice recording' : 'Start voice recording'
-    );
+    button.classList.remove('is-recording', 'is-transcribing');
 
-    // Re-add indicator if recording
-    if (recording) {
+    if (transcribing) {
+      button.classList.add('is-transcribing');
+      button.innerHTML = LOADING_ICON;
+      button.setAttribute('aria-label', 'Transcribing...');
+      button.disabled = true;
+    } else if (recording) {
+      button.classList.add('is-recording');
+      button.innerHTML = STOP_ICON;
+      button.setAttribute('aria-label', 'Stop voice recording');
+      button.disabled = false;
+
+      // Add recording indicator
       const newIndicator = document.createElement('div');
       newIndicator.className = 'heydev-voice-recording-indicator';
       button.appendChild(newIndicator);
+    } else {
+      button.innerHTML = MIC_ICON;
+      button.setAttribute('aria-label', 'Start voice recording');
+      button.disabled = false;
     }
   };
 
-  // Start recording
-  const startRecording = () => {
+  // =========================================================
+  // Native Mode: Web Speech API
+  // =========================================================
+  const startNativeRecording = () => {
     if (recording || !SpeechRecognitionClass) return;
 
     try {
@@ -310,7 +384,6 @@ export function createVoiceButton(
         }
 
         if (onTranscript) {
-          // Send the full transcript (final + interim)
           const fullTranscript = (finalTranscript + interimTranscript).trim();
           const isFinal = interimTranscript === '';
           onTranscript(fullTranscript, isFinal);
@@ -322,24 +395,20 @@ export function createVoiceButton(
         if (onError) {
           onError(event.error);
         }
-        stopRecording();
+        stopNativeRecording();
       };
 
       recognition.onend = () => {
-        // Recognition ended (could be automatic)
         if (recording) {
-          // If we're still supposed to be recording, it ended unexpectedly
-          // This can happen after long pauses - just stop cleanly
-          stopRecording();
+          stopNativeRecording();
         }
       };
 
       recognition.start();
 
-      // Set up max duration timeout
       timeoutId = setTimeout(() => {
         if (recording) {
-          stopRecording();
+          stopNativeRecording();
         }
       }, maxDuration * 1000);
     } catch (error) {
@@ -350,8 +419,7 @@ export function createVoiceButton(
     }
   };
 
-  // Stop recording
-  const stopRecording = () => {
+  const stopNativeRecording = () => {
     if (!recording) return;
 
     recording = false;
@@ -377,8 +445,193 @@ export function createVoiceButton(
     }
   };
 
-  // Toggle recording
+  // =========================================================
+  // Fallback Mode: MediaRecorder + Whisper API
+  // =========================================================
+  const startFallbackRecording = async () => {
+    if (recording || transcribing) return;
+
+    try {
+      // Request microphone access
+      mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Determine best MIME type
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : 'audio/mp4';
+
+      mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+      audioChunks = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunks.push(event.data);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        // Stop all tracks to release microphone
+        if (mediaStream) {
+          mediaStream.getTracks().forEach((track) => track.stop());
+          mediaStream = null;
+        }
+
+        if (onRecordingStop) {
+          onRecordingStop();
+        }
+
+        // Check if we have audio to transcribe
+        if (audioChunks.length === 0) {
+          return;
+        }
+
+        // Transcribe the audio
+        await transcribeAudio();
+      };
+
+      mediaRecorder.onerror = () => {
+        console.error('MediaRecorder error');
+        if (onError) {
+          onError('Recording failed');
+        }
+        stopFallbackRecording();
+      };
+
+      // Start recording
+      mediaRecorder.start(1000); // Collect data every second
+      recording = true;
+      updateUI();
+
+      if (onRecordingStart) {
+        onRecordingStart();
+      }
+
+      // Set up max duration timeout
+      timeoutId = setTimeout(() => {
+        if (recording) {
+          stopFallbackRecording();
+        }
+      }, maxDuration * 1000);
+    } catch (error) {
+      console.error('Failed to start recording:', error);
+      if (onError) {
+        if (error instanceof DOMException && error.name === 'NotAllowedError') {
+          onError('Microphone access denied');
+        } else {
+          onError('Failed to start recording');
+        }
+      }
+    }
+  };
+
+  const stopFallbackRecording = () => {
+    if (!recording) return;
+
+    recording = false;
+
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      timeoutId = null;
+    }
+
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      try {
+        mediaRecorder.stop();
+      } catch {
+        // Ignore errors when stopping
+      }
+    }
+
+    updateUI();
+  };
+
+  const transcribeAudio = async () => {
+    if (!transcribeEndpoint) {
+      console.error('No transcribe endpoint configured for fallback mode');
+      if (onError) {
+        onError('Transcription not configured');
+      }
+      return;
+    }
+
+    transcribing = true;
+    updateUI();
+
+    if (onTranscribingStart) {
+      onTranscribingStart();
+    }
+
+    try {
+      // Create audio blob
+      const audioBlob = new Blob(audioChunks, {
+        type: audioChunks[0]?.type || 'audio/webm',
+      });
+
+      // Build form data
+      const formData = new FormData();
+      formData.append('audio', audioBlob, 'recording.webm');
+
+      // Add session ID if available
+      if (getSessionId) {
+        formData.append('session_id', getSessionId());
+      }
+
+      // Send to server
+      const response = await fetch(transcribeEndpoint, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      if (data.text && onTranscript) {
+        onTranscript(data.text, true);
+      }
+    } catch (error) {
+      console.error('Transcription error:', error);
+      if (onError) {
+        onError(error instanceof Error ? error.message : 'Transcription failed');
+      }
+    } finally {
+      transcribing = false;
+      audioChunks = [];
+      updateUI();
+
+      if (onTranscribingEnd) {
+        onTranscribingEnd();
+      }
+    }
+  };
+
+  // =========================================================
+  // Public API
+  // =========================================================
+  const startRecording = () => {
+    if (useNativeMode) {
+      startNativeRecording();
+    } else if (useFallbackMode) {
+      startFallbackRecording();
+    }
+  };
+
+  const stopRecording = () => {
+    if (useNativeMode) {
+      stopNativeRecording();
+    } else if (useFallbackMode) {
+      stopFallbackRecording();
+    }
+  };
+
   const toggleRecording = () => {
+    if (transcribing) return; // Don't toggle while transcribing
+
     if (recording) {
       stopRecording();
     } else {
@@ -396,13 +649,18 @@ export function createVoiceButton(
     button,
     element,
     isSupported: () => isSupported,
+    isFallbackMode: () => useFallbackMode,
     isRecording: () => recording,
+    isTranscribing: () => transcribing,
     startRecording,
     stopRecording,
     toggleRecording,
     destroy: () => {
       if (recording) {
         stopRecording();
+      }
+      if (mediaStream) {
+        mediaStream.getTracks().forEach((track) => track.stop());
       }
       button.removeEventListener('click', toggleRecording);
       element.remove();
