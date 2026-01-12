@@ -17,7 +17,7 @@ interface FeedbackContext {
   viewport: { width: number; height: number };
   timestamp: string;
   timezone: string;
-  console_errors?: Array<{ message: string; timestamp: string }>;
+  console_errors?: { message: string; timestamp: string }[];
 }
 
 /**
