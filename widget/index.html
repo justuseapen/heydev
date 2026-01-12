@@ -41,25 +41,71 @@
   </div>
 
   <script type="module">
-    import { createFloatingButton, createFeedbackPanel, createTextInput } from './src/index.ts';
+    import { createFloatingButton, createFeedbackPanel, createTextInput, createScreenshotButton } from './src/index.ts';
 
     // Create the floating button and feedback panel
     const button = createFloatingButton();
     const panel = createFeedbackPanel();
 
-    // Create the text input inside the panel body
+    // Create a wrapper for textarea and action buttons
+    const inputWrapper = document.createElement('div');
+    inputWrapper.style.cssText = 'display: flex; flex-direction: column; gap: 12px;';
+    panel.body.appendChild(inputWrapper);
+
+    // Create textarea row with screenshot button
+    const textareaRow = document.createElement('div');
+    textareaRow.style.cssText = 'display: flex; gap: 8px; align-items: flex-start;';
+    inputWrapper.appendChild(textareaRow);
+
+    // Create a container for textarea only (no submit button yet)
+    const textareaContainer = document.createElement('div');
+    textareaContainer.style.cssText = 'flex: 1;';
+    textareaRow.appendChild(textareaContainer);
+
+    // Screenshot preview area
+    const previewArea = document.createElement('div');
+    inputWrapper.appendChild(previewArea);
+
+    // Submit button area
+    const submitArea = document.createElement('div');
+    inputWrapper.appendChild(submitArea);
+
+    // Create screenshot button
+    const screenshotBtn = createScreenshotButton({
+      container: textareaRow,
+      previewContainer: previewArea,
+      onCapture: (dataUrl) => {
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.textContent = `[${new Date().toLocaleTimeString()}] Screenshot captured (${Math.round(dataUrl.length / 1024)}KB)`;
+        log.appendChild(p);
+      },
+      onRemove: () => {
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.textContent = `[${new Date().toLocaleTimeString()}] Screenshot removed`;
+        log.appendChild(p);
+      }
+    });
+
+    // Create the text input inside the textarea container
     const textInput = createTextInput({
-      container: panel.body,
+      container: textareaContainer,
       placeholder: "What's on your mind?",
       onSubmit: (text) => {
         const log = document.getElementById('log');
         const p = document.createElement('p');
-        p.textContent = `[${new Date().toLocaleTimeString()}] Feedback submitted: "${text}"`;
+        const hasScreenshot = screenshotBtn.hasScreenshot() ? ' (with screenshot)' : '';
+        p.textContent = `[${new Date().toLocaleTimeString()}] Feedback submitted: "${text}"${hasScreenshot}`;
         log.appendChild(p);
-        // Clear input after submit
+        // Clear input and screenshot after submit
         textInput.clear();
+        screenshotBtn.clearScreenshot();
       }
     });
+
+    // Move the submit button to the submit area
+    submitArea.appendChild(textInput.submitButton);
 
     // Log events
     const log = document.getElementById('log');
@@ -82,6 +128,7 @@
     window.heydevButton = button;
     window.heydevPanel = panel;
     window.heydevTextInput = textInput;
+    window.heydevScreenshotBtn = screenshotBtn;
   </script>
 </body>
 </html>

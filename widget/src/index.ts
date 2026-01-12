@@ -21,6 +21,11 @@ export {
   type TextInputOptions,
   type TextInputInstance,
 } from './components/TextInput';
+export {
+  createScreenshotButton,
+  type ScreenshotButtonOptions,
+  type ScreenshotButtonInstance,
+} from './components/ScreenshotButton';
 
 // Utility exports
 export { captureContext, type PageContext } from './utils/context';
