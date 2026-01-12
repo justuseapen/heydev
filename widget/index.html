@@ -41,7 +41,7 @@
   </div>
 
   <script type="module">
-    import { createFloatingButton, createFeedbackPanel, createTextInput, createScreenshotButton } from './src/index.ts';
+    import { createFloatingButton, createFeedbackPanel, createTextInput, createScreenshotButton, createVoiceButton } from './src/index.ts';
 
     // Create the floating button and feedback panel
     const button = createFloatingButton();
@@ -88,6 +88,38 @@
       }
     });
 
+    // Create voice button
+    const voiceBtn = createVoiceButton({
+      container: textareaRow,
+      onTranscript: (text, isFinal) => {
+        // Update textarea with transcribed text
+        textInput.setValue(text);
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.textContent = `[${new Date().toLocaleTimeString()}] Voice transcript${isFinal ? ' (final)' : ' (interim)'}: "${text}"`;
+        log.appendChild(p);
+      },
+      onRecordingStart: () => {
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.textContent = `[${new Date().toLocaleTimeString()}] Voice recording started`;
+        log.appendChild(p);
+      },
+      onRecordingStop: () => {
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.textContent = `[${new Date().toLocaleTimeString()}] Voice recording stopped`;
+        log.appendChild(p);
+      },
+      onError: (error) => {
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.style.color = 'red';
+        p.textContent = `[${new Date().toLocaleTimeString()}] Voice error: ${error}`;
+        log.appendChild(p);
+      }
+    });
+
     // Create the text input inside the textarea container
     const textInput = createTextInput({
       container: textareaContainer,
@@ -129,6 +161,7 @@
     window.heydevPanel = panel;
     window.heydevTextInput = textInput;
     window.heydevScreenshotBtn = screenshotBtn;
+    window.heydevVoiceBtn = voiceBtn;
   </script>
 </body>
 </html>

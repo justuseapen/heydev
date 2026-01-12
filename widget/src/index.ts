@@ -26,6 +26,11 @@ export {
   type ScreenshotButtonOptions,
   type ScreenshotButtonInstance,
 } from './components/ScreenshotButton';
+export {
+  createVoiceButton,
+  type VoiceButtonOptions,
+  type VoiceButtonInstance,
+} from './components/VoiceButton';
 
 // Utility exports
 export { captureContext, type PageContext } from './utils/context';
