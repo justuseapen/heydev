@@ -16,6 +16,11 @@ export {
   type FeedbackPanelOptions,
   type FeedbackPanelInstance,
 } from './components/FeedbackPanel';
+export {
+  createTextInput,
+  type TextInputOptions,
+  type TextInputInstance,
+} from './components/TextInput';
 
 // Utility exports
 export { captureContext, type PageContext } from './utils/context';

@@ -41,11 +41,25 @@
   </div>
 
   <script type="module">
-    import { createFloatingButton, createFeedbackPanel } from './src/index.ts';
+    import { createFloatingButton, createFeedbackPanel, createTextInput } from './src/index.ts';
 
     // Create the floating button and feedback panel
     const button = createFloatingButton();
     const panel = createFeedbackPanel();
+
+    // Create the text input inside the panel body
+    const textInput = createTextInput({
+      container: panel.body,
+      placeholder: "What's on your mind?",
+      onSubmit: (text) => {
+        const log = document.getElementById('log');
+        const p = document.createElement('p');
+        p.textContent = `[${new Date().toLocaleTimeString()}] Feedback submitted: "${text}"`;
+        log.appendChild(p);
+        // Clear input after submit
+        textInput.clear();
+      }
+    });
 
     // Log events
     const log = document.getElementById('log');
@@ -54,6 +68,8 @@
       const p = document.createElement('p');
       p.textContent = `[${new Date().toLocaleTimeString()}] heydev:open event fired! (panel opening)`;
       log.appendChild(p);
+      // Focus textarea when panel opens
+      setTimeout(() => textInput.focus(), 100);
     });
 
     document.addEventListener('heydev:close', () => {
@@ -65,6 +81,7 @@
     // Make components available globally for testing
     window.heydevButton = button;
     window.heydevPanel = panel;
+    window.heydevTextInput = textInput;
   </script>
 </body>
 </html>
