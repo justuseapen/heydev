@@ -32,7 +32,7 @@ Branch: ralph/heydev-feedback-widget
 | US-024 | SSE endpoint for real-time replies | complete |
 | US-025 | Widget SSE connection for replies | complete |
 | US-026 | Conversation history in widget | complete |
-| US-027 | User follow-up replies | pending |
+| US-027 | User follow-up replies | complete |
 | US-028 | Dashboard project setup | pending |
 | US-029 | Dashboard magic link authentication | pending |
 | US-030 | Dashboard API key generation | pending |
@@ -674,5 +674,37 @@ Branch: ralph/heydev-feedback-widget
   - Developer messages use server messageId for deduplication (dev_{messageId})
   - Container uses :empty pseudo-class to hide when no messages
   - FeedbackForm onSuccess callback now: (conversationId, submittedText, screenshotUrl?) => void
+
+---
+
+## 2026-01-13 - US-027: User follow-up replies
+- What was implemented:
+  - POST /api/reply endpoint (server/src/routes/reply.ts) for user follow-up messages
+  - submitReply service (widget/src/services/submitReply.ts) for widget-side reply submission
+  - FeedbackForm updated to support reply mode with different UI
+  - Placeholder changes from "What's on your mind?" to "Type your reply..."
+  - Button text changes from "Send Feedback" to "Send Reply"
+  - Screenshot button hidden in reply mode (not typically needed for quick replies)
+  - Voice input still available in reply mode
+  - Conversation ID persistence via ConversationHistory component (sessionStorage)
+  - Widget.ts restores conversation ID from storage when panel reopens
+  - FeedbackForm.setReplyMode() method to switch to reply mode after first feedback
+  - Replies added to conversation history and persisted
+- Files changed:
+  - server/src/routes/reply.ts (new reply endpoint)
+  - server/src/index.ts (mounted /api/reply route)
+  - widget/src/services/submitReply.ts (new reply submission service)
+  - widget/src/components/FeedbackForm.ts (reply mode support)
+  - widget/src/components/ConversationHistory.ts (conversation ID storage)
+  - widget/src/widget.ts (conversation ID restoration and reply handling)
+  - widget/src/index.ts (exported new service and types)
+  - widget/widget-test.html (updated test API key)
+- **Learnings for future iterations:**
+  - Conversation ID must be persisted to sessionStorage for panel close/reopen scenarios
+  - ConversationHistory.getConversationId() and setConversationId() for persistence
+  - Reply endpoint validates conversation_id, text, and session_id
+  - FeedbackForm exposes isReplyMode() and setReplyMode(id) for mode control
+  - Reply mode: isInReplyMode() closure function checks if currentConversationId is set
+  - onReplySuccess callback notifies parent when reply succeeds (vs onSuccess for initial feedback)
 
 ---
