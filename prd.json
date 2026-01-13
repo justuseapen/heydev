@@ -572,8 +572,8 @@
         "Typecheck passes"
       ],
       "priority": 35,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Multi-stage Dockerfile with alpine, docker-compose.yml with named volumes, .env.example documented, README.md with self-hosting guide."
     },
     {
       "id": "US-036",

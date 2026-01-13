@@ -40,7 +40,7 @@ Branch: ralph/heydev-feedback-widget
 | US-032 | Dashboard webhook channel configuration | complete |
 | US-033 | Dashboard email channel configuration | complete |
 | US-034 | Email notification sender | complete |
-| US-035 | Docker Compose for self-hosting | pending |
+| US-035 | Docker Compose for self-hosting | complete |
 | US-036 | Widget dark mode support | pending |
 | US-037 | Widget accessibility | pending |
 
@@ -897,5 +897,32 @@ Branch: ralph/heydev-feedback-widget
   - escapeHtml() function needed to prevent XSS in email content from user feedback
   - getPagePath() extracts path from URL for cleaner subject line (not full URL)
   - Plain text fallback is important for email accessibility
+
+---
+
+## 2026-01-13 - US-035: Docker Compose for self-hosting
+- What was implemented:
+  - Dockerfile with multi-stage build (builder + production stages)
+  - Uses Node 20 Alpine for smaller image size
+  - Installs better-sqlite3 build dependencies (python3, make, g++)
+  - docker-compose.yml with server service configuration
+  - Named volumes for data persistence: heydev-data, heydev-uploads
+  - .env.example with documented environment variables
+  - README.md with full self-hosting guide, API reference, and data backup instructions
+  - .dockerignore to optimize Docker build context
+  - Health check configured in both Dockerfile and docker-compose.yml
+- Files changed:
+  - Dockerfile (new multi-stage Docker build)
+  - docker-compose.yml (new Docker Compose configuration)
+  - .env.example (new environment variables template)
+  - README.md (new project documentation)
+  - .dockerignore (new Docker ignore rules)
+- **Learnings for future iterations:**
+  - better-sqlite3 requires native dependencies: apk add python3 make g++
+  - Multi-stage builds: use "AS builder" for build stage, copy only dist to production
+  - Named volumes persist data across container recreation: heydev-data:/app/server/data
+  - Docker health checks use wget (more portable than curl in Alpine)
+  - npm ci --workspace=server --omit=dev for production dependencies only
+  - WORKDIR /app/server before CMD to run from correct directory
 
 ---
