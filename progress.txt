@@ -42,7 +42,7 @@ Branch: ralph/heydev-feedback-widget
 | US-034 | Email notification sender | complete |
 | US-035 | Docker Compose for self-hosting | complete |
 | US-036 | Widget dark mode support | complete |
-| US-037 | Widget accessibility | pending |
+| US-037 | Widget accessibility | complete |
 
 ---
 
@@ -951,5 +951,32 @@ Branch: ralph/heydev-feedback-widget
   - data-theme attribute on script tag allows host page to control widget theme
   - Dark theme colors: lighter primary (#818cf8), dark backgrounds (#1f2937, #111827)
   - Success/error colors need inverted contrast in dark mode
+
+---
+
+## 2026-01-13 - US-037: Widget accessibility
+- What was implemented:
+  - Accessibility utility module (widget/src/utils/accessibility.ts)
+  - createFocusTrap() function for trapping focus within containers
+  - getFocusableElements() helper to query focusable elements in DOM
+  - announceToScreenReader() for screen reader announcements
+  - prefersReducedMotion() for checking user motion preferences
+  - Updated FeedbackPanel to use focus trap when open
+  - Escape key closes panel (handled by focus trap)
+  - Focus returns to trigger element when panel closes
+  - All ARIA labels were already present from previous stories
+  - prefers-reduced-motion already respected via CSS media queries
+- Files changed:
+  - widget/src/utils/accessibility.ts (new accessibility utility module)
+  - widget/src/components/FeedbackPanel.ts (integrated focus trap)
+  - widget/src/index.ts (exported accessibility utilities)
+- **Learnings for future iterations:**
+  - Focus trap captures Tab/Shift+Tab and cycles within container
+  - Use capture phase (true) for event listeners to catch before propagation
+  - requestAnimationFrame ensures element is focusable before focus()
+  - Shadow DOM focus requires checking shadowRoot.activeElement
+  - Focus trap should handle onEscape callback for panel close
+  - Store previouslyFocusedElement to restore focus when trap deactivates
+  - FOCUSABLE_SELECTOR: button:not([disabled]), [href], input:not([disabled]), etc.
 
 ---

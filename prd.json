@@ -605,8 +605,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 37,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Focus trap utility with Tab/Shift+Tab cycling, Escape closes panel, ARIA labels on all elements. prefers-reduced-motion respected via CSS media queries."
     }
   ]
 }
