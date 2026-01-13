@@ -4,17 +4,22 @@
   "description": "HeyDev feedback widget for embedding in websites",
   "type": "module",
   "main": "dist/widget.js",
+  "unpkg": "dist/widget.js",
+  "jsdelivr": "dist/widget.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist/widget.js",
+    "dist/widget.js.map"
+  ],
   "scripts": {
     "build": "vite build",
     "dev": "vite",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "html2canvas": "^1.4.1",
+    "rollup-plugin-visualizer": "^6.0.5",
     "typescript": "^5.4.0",
     "vite": "^5.2.0"
-  },
-  "dependencies": {
-    "html2canvas": "^1.4.1"
   }
 }

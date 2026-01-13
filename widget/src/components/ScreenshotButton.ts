@@ -1,9 +1,10 @@
 /**
  * HeyDev Screenshot Button Component
  * A button for capturing screenshots with html2canvas
+ * Uses dynamic import to reduce initial bundle size
  */
 
-import html2canvas from 'html2canvas';
+// html2canvas is dynamically imported when needed
 
 /** CSS styles for the screenshot button and preview */
 const SCREENSHOT_STYLES = `
@@ -244,6 +245,26 @@ export function createScreenshotButton(
     updateUI();
 
     try {
+      // Load html2canvas from CDN if not already loaded
+      // This keeps the bundle small while still providing screenshot functionality
+      let html2canvas = (window as unknown as { html2canvas?: typeof import('html2canvas').default }).html2canvas;
+
+      if (!html2canvas) {
+        // Load html2canvas from CDN
+        await new Promise<void>((resolve, reject) => {
+          const script = document.createElement('script');
+          script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+          script.onload = () => resolve();
+          script.onerror = () => reject(new Error('Failed to load html2canvas'));
+          document.head.appendChild(script);
+        });
+        html2canvas = (window as unknown as { html2canvas?: typeof import('html2canvas').default }).html2canvas;
+
+        if (!html2canvas) {
+          throw new Error('html2canvas failed to initialize');
+        }
+      }
+
       // Use html2canvas to capture the viewport
       const canvas = await html2canvas(document.body, {
         scale: 1,
