@@ -38,7 +38,7 @@ Branch: ralph/heydev-feedback-widget
 | US-030 | Dashboard API key generation | complete |
 | US-031 | Dashboard notification channel list | complete |
 | US-032 | Dashboard webhook channel configuration | complete |
-| US-033 | Dashboard email channel configuration | pending |
+| US-033 | Dashboard email channel configuration | complete |
 | US-034 | Email notification sender | pending |
 | US-035 | Docker Compose for self-hosting | pending |
 | US-036 | Widget dark mode support | pending |
@@ -845,5 +845,33 @@ Branch: ralph/heydev-feedback-widget
   - Convert headers object to array for dynamic key-value editor
   - Test endpoint doesn't require API key auth but does validate session
   - Route ordering matters: specific routes (/webhook/secret, /webhook/test) before generic (/:type)
+
+---
+
+## 2026-01-13 - US-033: Dashboard email channel configuration
+- What was implemented:
+  - EmailConfigModal component (dashboard/src/components/EmailConfigModal.tsx)
+  - Email address input with validation
+  - Send verification button triggers POST /api/channels/email/send-verification
+  - Verification email with 6-digit code using sendEmailVerificationCode service
+  - Code input field with 6-digit restriction
+  - POST /api/channels/email/verify endpoint validates code and saves channel
+  - Multi-step modal UI: email input → verification code → verified state
+  - "Change email" and "Resend code" functionality
+  - SetupPage integration opens modal on Email Configure click
+  - Channel status updates to "Connected" after successful verification
+- Files changed:
+  - dashboard/src/components/EmailConfigModal.tsx (new modal component)
+  - dashboard/src/pages/SetupPage.tsx (modal integration, email config state)
+  - server/src/routes/channels.ts (email/send-verification and email/verify endpoints)
+  - server/src/services/emailService.ts (sendEmailVerificationCode function)
+- **Learnings for future iterations:**
+  - Use in-memory Map for short-lived verification codes (emailVerificationCodes)
+  - Verification codes are 6 digits generated with Math.floor(100000 + Math.random() * 900000)
+  - Codes expire after 10 minutes (configurable)
+  - Route ordering: /email/send-verification and /email/verify must come before /:type
+  - Multi-step modal pattern: use step state ('email' | 'verify' | 'verified')
+  - Input restriction for digits only: e.target.value.replace(/\D/g, '').slice(0, 6)
+  - EmailConfig interface: { email: string, verified?: boolean }
 
 ---
