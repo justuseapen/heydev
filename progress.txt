@@ -37,7 +37,7 @@ Branch: ralph/heydev-feedback-widget
 | US-029 | Dashboard magic link authentication | complete |
 | US-030 | Dashboard API key generation | complete |
 | US-031 | Dashboard notification channel list | complete |
-| US-032 | Dashboard webhook channel configuration | pending |
+| US-032 | Dashboard webhook channel configuration | complete |
 | US-033 | Dashboard email channel configuration | pending |
 | US-034 | Email notification sender | pending |
 | US-035 | Docker Compose for self-hosting | pending |
@@ -818,5 +818,32 @@ Branch: ralph/heydev-feedback-widget
   - CHANNEL_META object maps channel types to display properties (icon, name, description)
   - React switch pattern: role="switch" aria-checked={enabled} with translate-x animation
   - API key required before channels can be configured (guard in UI)
+
+---
+
+## 2026-01-13 - US-032: Dashboard webhook channel configuration
+- What was implemented:
+  - WebhookConfigModal component (dashboard/src/components/WebhookConfigModal.tsx)
+  - URL input field with validation
+  - Signing secret input with Generate button
+  - Custom headers key-value editor with add/remove functionality
+  - Test Webhook button with loading state and success/failure display
+  - Save Configuration button persists to database
+  - GET /api/channels/webhook/secret endpoint generates 'whsec_' prefixed secrets
+  - POST /api/channels/webhook/test endpoint sends test payload with HMAC signature
+  - SetupPage integration: opens modal on webhook Configure click
+  - Channel status updates to "Connected" after successful save
+- Files changed:
+  - dashboard/src/components/WebhookConfigModal.tsx (new modal component)
+  - dashboard/src/pages/SetupPage.tsx (modal integration, save handler)
+  - server/src/routes/channels.ts (webhook/secret and webhook/test endpoints)
+- **Learnings for future iterations:**
+  - Use crypto.randomBytes(24).toString('hex') for 48-char secret generation
+  - Webhook secrets use 'whsec_' prefix convention (similar to Stripe)
+  - Modal components receive isOpen, onClose, onSave, and initialConfig props
+  - Form reset on modal open using useEffect with isOpen dependency
+  - Convert headers object to array for dynamic key-value editor
+  - Test endpoint doesn't require API key auth but does validate session
+  - Route ordering matters: specific routes (/webhook/secret, /webhook/test) before generic (/:type)
 
 ---
