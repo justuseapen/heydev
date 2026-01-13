@@ -16,6 +16,7 @@ import { webhookReplyRoutes } from './routes/webhookReply.js';
 import { eventsRoutes } from './routes/events.js';
 import { authRoutes } from './routes/auth.js';
 import { keysRoutes } from './routes/keys.js';
+import { channelsRoutes } from './routes/channels.js';
 import { registerWebhookSender } from './services/webhookSender.js';
 
 export const VERSION = '0.1.0';
@@ -56,6 +57,9 @@ app.route('/api/auth', authRoutes);
 
 // API key management routes (requires session auth, not API key auth)
 app.route('/api/keys', keysRoutes);
+
+// Channel management routes (requires session auth, not API key auth)
+app.route('/api/channels', channelsRoutes);
 
 // Protected API routes - require API key authentication
 const api = new Hono();

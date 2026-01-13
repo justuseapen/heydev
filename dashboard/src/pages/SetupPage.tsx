@@ -21,6 +21,87 @@ interface GeneratedKey {
   createdAt: string;
 }
 
+interface ChannelInfo {
+  id?: number;
+  type: 'slack' | 'email' | 'sms' | 'webhook';
+  enabled: boolean;
+  verified: boolean;
+  configured: boolean;
+}
+
+// Channel metadata for display
+const CHANNEL_META: Record<
+  string,
+  { name: string; description: string; icon: React.ReactNode }
+> = {
+  slack: {
+    name: 'Slack',
+    description: 'Get feedback notifications in your Slack workspace',
+    icon: (
+      <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
+        <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+      </svg>
+    ),
+  },
+  email: {
+    name: 'Email',
+    description: 'Receive feedback notifications via email',
+    icon: (
+      <svg
+        className="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+        />
+      </svg>
+    ),
+  },
+  sms: {
+    name: 'SMS',
+    description: 'Get text message alerts for new feedback',
+    icon: (
+      <svg
+        className="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+        />
+      </svg>
+    ),
+  },
+  webhook: {
+    name: 'Webhook',
+    description: 'Send feedback to your own HTTP endpoint',
+    icon: (
+      <svg
+        className="h-6 w-6"
+        fill="none"
+        viewBox="0 0 24 24"
+        stroke="currentColor"
+        strokeWidth={2}
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+        />
+      </svg>
+    ),
+  },
+};
+
 export function SetupPage() {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,6 +110,8 @@ export function SetupPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [channels, setChannels] = useState<ChannelInfo[]>([]);
+  const [togglingChannel, setTogglingChannel] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,6 +137,16 @@ export function SetupPage() {
         if (keyResponse.ok) {
           const keyData = await keyResponse.json();
           setApiKeyInfo(keyData);
+        }
+
+        // Fetch channels info
+        const channelsResponse = await fetch(`${API_URL}/api/channels`, {
+          credentials: 'include',
+        });
+
+        if (channelsResponse.ok) {
+          const channelsData = await channelsResponse.json();
+          setChannels(channelsData.channels);
         }
       } catch {
         navigate('/login');
@@ -150,6 +243,46 @@ export function SetupPage() {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
+  };
+
+  const handleToggleChannel = async (channelType: string, enabled: boolean) => {
+    if (!apiKeyInfo?.hasKey) {
+      setError('Generate an API key first to configure channels');
+      return;
+    }
+
+    setTogglingChannel(channelType);
+
+    try {
+      const response = await fetch(`${API_URL}/api/channels/${channelType}/toggle`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        setError(data.error || 'Failed to update channel');
+        return;
+      }
+
+      // Update local state
+      setChannels((prev) =>
+        prev.map((ch) =>
+          ch.type === channelType ? { ...ch, enabled } : ch
+        )
+      );
+    } catch {
+      setError('Failed to update channel');
+    } finally {
+      setTogglingChannel(null);
+    }
+  };
+
+  const handleConfigureChannel = (channelType: string) => {
+    // For now, just show an alert - this will be implemented in US-032/033
+    alert(`Configure ${CHANNEL_META[channelType]?.name || channelType} - Coming in next update!`);
   };
 
   if (isLoading) {
@@ -378,16 +511,99 @@ export function SetupPage() {
           )}
         </div>
 
+        {/* Notification Channels Section */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">
             Notification Channels
           </h2>
-          <p className="text-gray-600 text-sm mb-4">
+          <p className="text-gray-600 text-sm mb-6">
             Configure where you want to receive feedback notifications.
           </p>
-          <div className="text-gray-500 text-sm">
-            Coming soon: Slack, Email, SMS, and Webhook integrations.
+
+          <div className="space-y-4">
+            {channels.map((channel) => {
+              const meta = CHANNEL_META[channel.type];
+              if (!meta) return null;
+
+              return (
+                <div
+                  key={channel.type}
+                  className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-gray-300 transition-colors"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Icon */}
+                    <div
+                      className={`p-2 rounded-lg ${
+                        channel.enabled
+                          ? 'bg-indigo-100 text-indigo-600'
+                          : 'bg-gray-100 text-gray-400'
+                      }`}
+                    >
+                      {meta.icon}
+                    </div>
+
+                    {/* Name and description */}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-medium text-gray-900">{meta.name}</h3>
+                        {/* Status badge */}
+                        {channel.configured && channel.verified && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Connected
+                          </span>
+                        )}
+                        {channel.configured && !channel.verified && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                            Pending
+                          </span>
+                        )}
+                        {!channel.configured && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                            Not configured
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-500">{meta.description}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    {/* Configure button */}
+                    <button
+                      onClick={() => handleConfigureChannel(channel.type)}
+                      className="px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      Configure
+                    </button>
+
+                    {/* Toggle switch */}
+                    <button
+                      onClick={() => handleToggleChannel(channel.type, !channel.enabled)}
+                      disabled={togglingChannel === channel.type || !apiKeyInfo?.hasKey}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
+                        channel.enabled ? 'bg-indigo-600' : 'bg-gray-200'
+                      }`}
+                      role="switch"
+                      aria-checked={channel.enabled}
+                      aria-label={`Toggle ${meta.name}`}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          channel.enabled ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
+
+          {!apiKeyInfo?.hasKey && (
+            <p className="text-gray-500 text-sm mt-4 italic">
+              Generate an API key above to configure notification channels.
+            </p>
+          )}
         </div>
       </div>
     </div>
