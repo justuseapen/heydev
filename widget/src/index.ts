@@ -86,3 +86,10 @@ export {
   type Theme,
   type ResolvedTheme,
 } from './utils/theme';
+export {
+  createFocusTrap,
+  getFocusableElements,
+  announceToScreenReader,
+  prefersReducedMotion,
+  type FocusTrapInstance,
+} from './utils/accessibility';

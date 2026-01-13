@@ -3,6 +3,8 @@
  * A panel that opens when the feedback button is clicked
  */
 
+import { createFocusTrap, type FocusTrapInstance } from '../utils/accessibility';
+
 /** CSS styles for the feedback panel */
 const PANEL_STYLES = `
   .heydev-panel-overlay {
@@ -129,6 +131,8 @@ export function createFeedbackPanel(
 ): FeedbackPanelInstance {
   const container = options.container ?? document.body;
   let panelOpen = false;
+  let focusTrap: FocusTrapInstance | null = null;
+  let previouslyFocusedElement: HTMLElement | null = null;
 
   // Inject styles if not already present
   const styleId = 'heydev-feedback-panel-styles';
@@ -180,17 +184,43 @@ export function createFeedbackPanel(
   const open = () => {
     if (panelOpen) return;
     panelOpen = true;
+
+    // Store the element that had focus before opening the panel
+    previouslyFocusedElement = document.activeElement as HTMLElement;
+
     overlay.style.display = 'block';
     panel.classList.add('heydev-panel-open');
-    // Focus close button for accessibility
-    setTimeout(() => closeButton.focus(), 50);
+
+    // Create and activate focus trap after a short delay (allow DOM to update)
+    setTimeout(() => {
+      focusTrap = createFocusTrap(panel, {
+        initialFocus: closeButton,
+        returnFocus: previouslyFocusedElement ?? undefined,
+        onEscape: close,
+      });
+      focusTrap.activate();
+    }, 50);
   };
 
   const close = () => {
     if (!panelOpen) return;
     panelOpen = false;
+
+    // Deactivate focus trap before closing
+    if (focusTrap) {
+      focusTrap.deactivate();
+      focusTrap = null;
+    }
+
     overlay.style.display = 'none';
     panel.classList.remove('heydev-panel-open');
+
+    // Return focus to the element that had focus before opening
+    if (previouslyFocusedElement) {
+      previouslyFocusedElement.focus();
+      previouslyFocusedElement = null;
+    }
+
     // Dispatch close event
     const event = new CustomEvent('heydev:close', {
       bubbles: true,
@@ -211,13 +241,7 @@ export function createFeedbackPanel(
   container.addEventListener('heydev:open', handleOpen);
   container.addEventListener('heydev:close', handleClose);
 
-  // Keyboard handling for Escape key (will be enhanced in accessibility story)
-  const handleKeydown = (e: KeyboardEvent) => {
-    if (e.key === 'Escape' && panelOpen) {
-      close();
-    }
-  };
-  document.addEventListener('keydown', handleKeydown);
+  // Note: Escape key handling is now managed by the focus trap
 
   // Add to container
   container.appendChild(overlay);
@@ -227,9 +251,13 @@ export function createFeedbackPanel(
     element: panel,
     body,
     destroy: () => {
+      // Deactivate focus trap if still active
+      if (focusTrap) {
+        focusTrap.deactivate();
+        focusTrap = null;
+      }
       container.removeEventListener('heydev:open', handleOpen);
       container.removeEventListener('heydev:close', handleClose);
-      document.removeEventListener('keydown', handleKeydown);
       overlay.remove();
       panel.remove();
     },
