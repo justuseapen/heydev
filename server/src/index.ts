@@ -15,6 +15,7 @@ import { replyRoutes } from './routes/reply.js';
 import { webhookReplyRoutes } from './routes/webhookReply.js';
 import { eventsRoutes } from './routes/events.js';
 import { authRoutes } from './routes/auth.js';
+import { keysRoutes } from './routes/keys.js';
 import { registerWebhookSender } from './services/webhookSender.js';
 
 export const VERSION = '0.1.0';
@@ -24,8 +25,20 @@ registerWebhookSender();
 
 const app = new Hono();
 
-// CORS middleware - allow all origins
-app.use('*', cors());
+// CORS middleware - allow credentials for dashboard
+app.use('*', cors({
+  origin: (origin) => {
+    // Allow requests with no origin (like mobile apps or curl)
+    if (!origin) return '*';
+    // Allow localhost on any port for development
+    if (origin.startsWith('http://localhost:')) return origin;
+    // Allow the production dashboard URL if set
+    if (process.env.DASHBOARD_URL && origin === process.env.DASHBOARD_URL) return origin;
+    // Default: allow all (for widget on any domain)
+    return '*';
+  },
+  credentials: true,
+}));
 
 // Health check endpoint (public)
 app.get('/health', (c) => {
@@ -40,6 +53,9 @@ app.route('/api/events', eventsRoutes);
 
 // Auth routes (public - no API key required)
 app.route('/api/auth', authRoutes);
+
+// API key management routes (requires session auth, not API key auth)
+app.route('/api/keys', keysRoutes);
 
 // Protected API routes - require API key authentication
 const api = new Hono();
