@@ -118,3 +118,53 @@ If you didn't request this email, you can safely ignore it.
     text,
   });
 }
+
+/**
+ * Send email channel verification code
+ */
+export async function sendEmailVerificationCode(
+  email: string,
+  code: string
+): Promise<{ success: boolean; error?: string }> {
+  const html = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
+  <div style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%); padding: 32px; border-radius: 12px 12px 0 0;">
+    <h1 style="color: white; margin: 0; font-size: 24px;">HeyDev</h1>
+  </div>
+  <div style="background: #ffffff; padding: 32px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
+    <h2 style="color: #111827; margin-top: 0;">Verify your email for notifications</h2>
+    <p style="color: #6b7280;">Use the code below to verify your email address for HeyDev feedback notifications. This code expires in 10 minutes.</p>
+    <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; text-align: center; margin: 24px 0;">
+      <span style="font-size: 32px; font-weight: 700; letter-spacing: 8px; color: #111827; font-family: monospace;">${code}</span>
+    </div>
+    <p style="color: #9ca3af; font-size: 14px;">If you didn't request this verification, you can safely ignore this email.</p>
+  </div>
+</body>
+</html>
+`;
+
+  const text = `
+Verify your email for HeyDev notifications
+
+Use this code to verify your email address:
+
+${code}
+
+This code expires in 10 minutes.
+
+If you didn't request this verification, you can safely ignore this email.
+`;
+
+  return sendEmail({
+    to: email,
+    subject: 'Verify your email for HeyDev notifications',
+    html,
+    text,
+  });
+}

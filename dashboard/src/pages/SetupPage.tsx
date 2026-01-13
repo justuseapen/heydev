@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { WebhookConfigModal } from '../components/WebhookConfigModal';
+import { EmailConfigModal } from '../components/EmailConfigModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -26,6 +27,11 @@ interface WebhookConfig {
   url: string;
   secret?: string;
   headers?: Record<string, string>;
+}
+
+interface EmailConfig {
+  email: string;
+  verified?: boolean;
 }
 
 interface ChannelInfo {
@@ -122,6 +128,8 @@ export function SetupPage() {
   const [togglingChannel, setTogglingChannel] = useState<string | null>(null);
   const [webhookModalOpen, setWebhookModalOpen] = useState(false);
   const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | undefined>(undefined);
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailConfig, setEmailConfig] = useState<EmailConfig | undefined>(undefined);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -296,6 +304,12 @@ export function SetupPage() {
       const webhookChannel = channels.find((ch) => ch.type === 'webhook');
       setWebhookConfig(webhookChannel?.config as WebhookConfig | undefined);
       setWebhookModalOpen(true);
+    } else if (channelType === 'email') {
+      // Find the email channel to get its current config
+      const emailChannel = channels.find((ch) => ch.type === 'email');
+      const config = emailChannel?.config as EmailConfig | undefined;
+      setEmailConfig(config ? { ...config, verified: emailChannel?.verified } : undefined);
+      setEmailModalOpen(true);
     } else {
       // Other channels will be implemented in future stories
       alert(`Configure ${CHANNEL_META[channelType]?.name || channelType} - Coming soon!`);
@@ -337,6 +351,24 @@ export function SetupPage() {
     );
 
     return data;
+  };
+
+  const handleSaveEmailConfig = async (config: EmailConfig) => {
+    // The email is verified by the time we get here (verification happens in the modal)
+    // Just update the local state
+    setChannels((prev) =>
+      prev.map((ch) =>
+        ch.type === 'email'
+          ? {
+              ...ch,
+              enabled: true,
+              configured: true,
+              verified: true,
+              config: { email: config.email },
+            }
+          : ch
+      )
+    );
   };
 
   if (isLoading) {
@@ -667,6 +699,14 @@ export function SetupPage() {
         onClose={() => setWebhookModalOpen(false)}
         onSave={handleSaveWebhookConfig}
         initialConfig={webhookConfig}
+      />
+
+      {/* Email Configuration Modal */}
+      <EmailConfigModal
+        isOpen={emailModalOpen}
+        onClose={() => setEmailModalOpen(false)}
+        onSave={handleSaveEmailConfig}
+        initialConfig={emailConfig}
       />
     </div>
   );

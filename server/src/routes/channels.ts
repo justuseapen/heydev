@@ -7,6 +7,18 @@ import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { eq, and } from 'drizzle-orm';
 import { db, apiKeys, channels, sessions, users, type ChannelType, channelTypes } from '../db/index.js';
+import { sendEmailVerificationCode } from '../services/emailService.js';
+
+// In-memory store for email verification codes
+// Format: Map<email, { code: string, expiresAt: Date, apiKeyId: number }>
+const emailVerificationCodes = new Map<string, { code: string; expiresAt: Date; apiKeyId: number }>();
+
+/**
+ * Generate a 6-digit verification code
+ */
+function generateVerificationCode(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
 export const channelsRoutes = new Hono();
 
@@ -377,6 +389,141 @@ channelsRoutes.post('/webhook/test', async (c) => {
       error: error instanceof Error ? error.message : 'Unknown error',
     });
   }
+});
+
+/**
+ * POST /api/channels/email/send-verification
+ * Send a verification email with a 6-digit code
+ */
+channelsRoutes.post('/email/send-verification', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+
+  if (!apiKey) {
+    return c.json({ error: 'API key required' }, 400);
+  }
+
+  const body = await c.req.json() as { email: string };
+
+  if (!body.email) {
+    return c.json({ error: 'Email is required' }, 400);
+  }
+
+  // Validate email format
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(body.email)) {
+    return c.json({ error: 'Invalid email format' }, 400);
+  }
+
+  // Generate a 6-digit code
+  const code = generateVerificationCode();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+  // Store the code
+  emailVerificationCodes.set(body.email.toLowerCase(), {
+    code,
+    expiresAt,
+    apiKeyId: apiKey.id,
+  });
+
+  // Send the verification email
+  const result = await sendEmailVerificationCode(body.email, code);
+
+  if (!result.success) {
+    return c.json({ error: result.error || 'Failed to send verification email' }, 500);
+  }
+
+  return c.json({ success: true, message: 'Verification code sent' });
+});
+
+/**
+ * POST /api/channels/email/verify
+ * Verify the 6-digit code and save the email channel
+ */
+channelsRoutes.post('/email/verify', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+
+  if (!apiKey) {
+    return c.json({ error: 'API key required' }, 400);
+  }
+
+  const body = await c.req.json() as { email: string; code: string };
+
+  if (!body.email || !body.code) {
+    return c.json({ error: 'Email and code are required' }, 400);
+  }
+
+  // Look up the stored code
+  const stored = emailVerificationCodes.get(body.email.toLowerCase());
+
+  if (!stored) {
+    return c.json({ error: 'No verification code found. Please request a new one.' }, 400);
+  }
+
+  // Check if expired
+  if (new Date() > stored.expiresAt) {
+    emailVerificationCodes.delete(body.email.toLowerCase());
+    return c.json({ error: 'Verification code has expired. Please request a new one.' }, 400);
+  }
+
+  // Check if code matches
+  if (stored.code !== body.code.trim()) {
+    return c.json({ error: 'Invalid verification code' }, 400);
+  }
+
+  // Check if the stored code was for this API key
+  if (stored.apiKeyId !== apiKey.id) {
+    return c.json({ error: 'Verification code invalid for this account' }, 400);
+  }
+
+  // Code is valid - delete it
+  emailVerificationCodes.delete(body.email.toLowerCase());
+
+  // Save or update the email channel
+  const existingChannel = await db.query.channels.findFirst({
+    where: and(
+      eq(channels.apiKeyId, apiKey.id),
+      eq(channels.type, 'email')
+    ),
+  });
+
+  const emailConfig = { email: body.email.toLowerCase() };
+
+  if (existingChannel) {
+    // Update existing channel
+    await db
+      .update(channels)
+      .set({
+        config: emailConfig,
+        verified: true,
+        enabled: true,
+      })
+      .where(eq(channels.id, existingChannel.id));
+  } else {
+    // Create new channel
+    await db.insert(channels).values({
+      apiKeyId: apiKey.id,
+      type: 'email',
+      config: emailConfig,
+      enabled: true,
+      verified: true,
+    });
+  }
+
+  return c.json({ success: true, message: 'Email verified successfully' });
 });
 
 /**
