@@ -55,6 +55,11 @@ export {
   type SubmitFeedbackResult,
 } from './services/submitFeedback';
 export {
+  submitReply,
+  type SubmitReplyOptions,
+  type SubmitReplyResult,
+} from './services/submitReply';
+export {
   createSSEClient,
   type SSEClientOptions,
   type SSEClientInstance,

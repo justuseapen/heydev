@@ -7,6 +7,7 @@ import { createTextInput, type TextInputInstance } from './TextInput';
 import { createScreenshotButton, type ScreenshotButtonInstance } from './ScreenshotButton';
 import { createVoiceButton, type VoiceButtonInstance } from './VoiceButton';
 import { submitFeedback } from '../services/submitFeedback';
+import { submitReply } from '../services/submitReply';
 import { getSessionId } from '../utils/session';
 
 /** CSS styles for the feedback form */
@@ -103,8 +104,14 @@ export interface FeedbackFormOptions {
   endpoint: string;
   /** API key for authentication */
   apiKey: string;
+  /** Session ID for the current session */
+  sessionId?: string;
+  /** Existing conversation ID - if set, form is in reply mode */
+  conversationId?: string;
   /** Callback when feedback is successfully submitted (includes submitted text and screenshot URL) */
   onSuccess?: (conversationId: string, submittedText: string, screenshotUrl?: string) => void;
+  /** Callback when reply is successfully submitted */
+  onReplySuccess?: (submittedText: string) => void;
   /** Callback when submission fails */
   onError?: (error: string) => void;
   /** Callback to close the panel */
@@ -120,6 +127,10 @@ export interface FeedbackFormInstance {
   screenshotButton: ScreenshotButtonInstance;
   /** The voice button instance */
   voiceButton: VoiceButtonInstance;
+  /** Check if form is in reply mode */
+  isReplyMode: () => boolean;
+  /** Set form to reply mode with conversation ID */
+  setReplyMode: (conversationId: string) => void;
   /** Clear the form */
   clear: () => void;
   /** Focus the textarea */
@@ -136,7 +147,12 @@ export interface FeedbackFormInstance {
 export function createFeedbackForm(
   options: FeedbackFormOptions
 ): FeedbackFormInstance {
-  const { container, endpoint, apiKey, onSuccess, onError, onClose } = options;
+  const { container, endpoint, apiKey, onSuccess, onReplySuccess, onError, onClose } = options;
+  const sessionId = options.sessionId ?? getSessionId();
+
+  // Track reply mode state - form is in reply mode if conversationId is provided
+  let currentConversationId: string | null = options.conversationId ?? null;
+  const isInReplyMode = () => currentConversationId !== null;
 
   // Inject styles if not already present
   const styleId = 'heydev-feedback-form-styles';
@@ -212,42 +228,81 @@ export function createFeedbackForm(
     const btnContent = submitBtn.innerHTML;
     submitBtn.innerHTML = `<span class="heydev-btn-text">${btnContent}</span>`;
 
-    await submitFeedback({
-      text,
-      screenshot: screenshotBtn.getScreenshot(),
-      endpoint,
-      apiKey,
-      onStart: () => {
-        // Already handled above
-      },
-      onSuccess: (conversationId, screenshotUrl) => {
-        showStatus('Feedback sent!', 'success');
+    // Check if we're in reply mode or initial feedback mode
+    if (isInReplyMode() && currentConversationId) {
+      // Reply mode - send to reply endpoint
+      await submitReply({
+        text,
+        conversationId: currentConversationId,
+        sessionId,
+        endpoint,
+        apiKey,
+        onStart: () => {
+          // Already handled above
+        },
+        onSuccess: () => {
+          showStatus('Reply sent!', 'success');
 
-        // Clear form
-        textInput.clear();
-        screenshotBtn.clearScreenshot();
+          // Clear form
+          textInput.clear();
 
-        // Notify parent with submitted text and screenshot URL
-        if (onSuccess) {
-          onSuccess(conversationId, submittedText, screenshotUrl);
-        }
-
-        // Close panel after 2 seconds
-        setTimeout(() => {
-          if (onClose) {
-            onClose();
+          // Notify parent
+          if (onReplySuccess) {
+            onReplySuccess(submittedText);
           }
-          clearStatus();
-        }, 2000);
-      },
-      onError: (error) => {
-        showStatus(`Error: ${error}`, 'error');
 
-        if (onError) {
-          onError(error);
-        }
-      },
-    });
+          // Clear status after a delay (don't close panel for replies)
+          setTimeout(() => {
+            clearStatus();
+          }, 1500);
+        },
+        onError: (error) => {
+          showStatus(`Error: ${error}`, 'error');
+
+          if (onError) {
+            onError(error);
+          }
+        },
+      });
+    } else {
+      // Initial feedback mode
+      await submitFeedback({
+        text,
+        screenshot: screenshotBtn.getScreenshot(),
+        endpoint,
+        apiKey,
+        onStart: () => {
+          // Already handled above
+        },
+        onSuccess: (conversationId, screenshotUrl) => {
+          showStatus('Feedback sent!', 'success');
+
+          // Clear form
+          textInput.clear();
+          screenshotBtn.clearScreenshot();
+
+          // Notify parent with submitted text and screenshot URL
+          if (onSuccess) {
+            onSuccess(conversationId, submittedText, screenshotUrl);
+          }
+
+          // Close panel after 2 seconds
+          setTimeout(() => {
+            if (onClose) {
+              onClose();
+            }
+            clearStatus();
+          }, 2000);
+        },
+        onError: (error) => {
+          showStatus(`Error: ${error}`, 'error');
+
+          if (onError) {
+            onError(error);
+          }
+        },
+      });
+    }
 
     // Reset button state
     isSubmitting = false;
@@ -256,6 +311,25 @@ export function createFeedbackForm(
 
     // Update button disabled state based on textarea content
     submitBtn.disabled = !textInput.getValue().trim();
+  };
+
+  // Update form for reply mode (update placeholder, button text, hide screenshot)
+  const updateFormForReplyMode = () => {
+    // Update placeholder text
+    textInput.textarea.placeholder = 'Type your reply...';
+
+    // Update button text
+    const btnTextSpan = textInput.submitButton.querySelector('span');
+    if (btnTextSpan) {
+      btnTextSpan.textContent = 'Send Reply';
+    } else {
+      // Button might have just the SVG and text, update the text node
+      textInput.submitButton.innerHTML = textInput.submitButton.innerHTML.replace('Send Feedback', 'Send Reply');
+    }
+    textInput.submitButton.setAttribute('aria-label', 'Send reply');
+
+    // Hide screenshot button in reply mode (not typically needed for quick replies)
+    screenshotBtn.button.style.display = 'none';
   };
 
   // Create text input
@@ -274,11 +348,11 @@ export function createFeedbackForm(
     previewContainer: previewArea,
   });
 
-  // Create voice button
+  // Create voice button (voice input still available in reply mode)
   const voiceBtn = createVoiceButton({
     container: actionsContainer,
     transcribeEndpoint: `${endpoint}/api/transcribe`,
-    getSessionId: getSessionId,
+    getSessionId: () => sessionId,
     onTranscript: (text) => {
       textInput.setValue(text);
     },
@@ -287,11 +361,21 @@ export function createFeedbackForm(
   // Add form to container
   container.appendChild(form);
 
+  // If starting in reply mode, update the form UI
+  if (isInReplyMode()) {
+    updateFormForReplyMode();
+  }
+
   return {
     element: form,
     textInput,
     screenshotButton: screenshotBtn,
     voiceButton: voiceBtn,
+    isReplyMode: isInReplyMode,
+    setReplyMode: (conversationId: string) => {
+      currentConversationId = conversationId;
+      updateFormForReplyMode();
+    },
     clear: () => {
       textInput.clear();
       screenshotBtn.clearScreenshot();

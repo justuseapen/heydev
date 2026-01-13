@@ -172,6 +172,10 @@ export interface ConversationHistoryInstance {
   getMessageCount: () => number;
   /** Check if there are any messages */
   hasMessages: () => boolean;
+  /** Get the stored conversation ID */
+  getConversationId: () => string | null;
+  /** Set the conversation ID (persists to storage) */
+  setConversationId: (id: string) => void;
   /** Clear all messages (also clears storage) */
   clear: () => void;
   /** Remove from DOM */
@@ -180,6 +184,8 @@ export interface ConversationHistoryInstance {
 
 /** Storage key prefix for conversation history */
 const STORAGE_KEY_PREFIX = 'heydev_history_';
+/** Storage key prefix for conversation ID */
+const CONVERSATION_ID_KEY_PREFIX = 'heydev_conversation_';
 
 /**
  * Format timestamp for display
@@ -238,8 +244,36 @@ function clearStorage(sessionId: string): void {
   try {
     const key = STORAGE_KEY_PREFIX + sessionId;
     sessionStorage.removeItem(key);
+    // Also clear conversation ID
+    const convKey = CONVERSATION_ID_KEY_PREFIX + sessionId;
+    sessionStorage.removeItem(convKey);
   } catch (error) {
     console.warn('[HeyDev] Failed to clear conversation history:', error);
+  }
+}
+
+/**
+ * Load conversation ID from sessionStorage
+ */
+function loadConversationId(sessionId: string): string | null {
+  try {
+    const key = CONVERSATION_ID_KEY_PREFIX + sessionId;
+    return sessionStorage.getItem(key);
+  } catch (error) {
+    console.warn('[HeyDev] Failed to load conversation ID:', error);
+  }
+  return null;
+}
+
+/**
+ * Save conversation ID to sessionStorage
+ */
+function saveConversationId(sessionId: string, conversationId: string): void {
+  try {
+    const key = CONVERSATION_ID_KEY_PREFIX + sessionId;
+    sessionStorage.setItem(key, conversationId);
+  } catch (error) {
+    console.warn('[HeyDev] Failed to save conversation ID:', error);
   }
 }
 
@@ -413,6 +447,8 @@ export function createConversationHistory(
     getMessages: () => [...messages],
     getMessageCount: () => messages.length,
     hasMessages: () => messages.length > 0,
+    getConversationId: () => loadConversationId(sessionId),
+    setConversationId: (id: string) => saveConversationId(sessionId, id),
     clear,
     destroy: () => {
       historyContainer.remove();

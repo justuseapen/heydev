@@ -143,6 +143,8 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
   let unreadCount = 0;
   // Track if we've sent feedback (to know when to connect SSE)
   let hasSentFeedback = false;
+  // Track the current conversation ID (for reply mode)
+  let currentConversationId: string | null = null;
   // Get session ID once for consistent use
   const sessionId = getSessionId();
 
@@ -205,21 +207,39 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
       sessionId,
     });
 
-    // Check if we have existing messages (indicates returning user)
+    // Check if we have existing messages (indicates returning user with existing conversation)
     if (conversationHistory.hasMessages()) {
       hasSentFeedback = true;
       connectSSE();
     }
 
+    // Try to restore conversation ID from storage
+    const storedConversationId = conversationHistory.getConversationId();
+    if (storedConversationId && !currentConversationId) {
+      currentConversationId = storedConversationId;
+    }
+
+    // Determine if form should start in reply mode
+    // Reply mode is enabled if we have an existing conversation ID
+    const isReplyMode = currentConversationId !== null;
+
     form = createFeedbackForm({
       container: panel.body,
       endpoint: config.endpoint,
       apiKey: config.apiKey,
+      sessionId,
+      // Pass conversation ID to enable reply mode if we have one
+      conversationId: isReplyMode ? (currentConversationId ?? undefined) : undefined,
       onSuccess: (conversationId, submittedText, screenshotUrl) => {
         // Add user message to conversation history
         if (conversationHistory) {
           conversationHistory.addUserMessage(submittedText, screenshotUrl);
+          // Persist the conversation ID for future sessions
+          conversationHistory.setConversationId(conversationId);
         }
+
+        // Store the conversation ID for future replies
+        currentConversationId = conversationId;
 
         // Form handles success message and auto-close
         console.log('[HeyDev] Feedback sent, conversation:', conversationId);
@@ -229,9 +249,21 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
           hasSentFeedback = true;
           connectSSE();
         }
+
+        // After first feedback, switch form to reply mode
+        if (form && !form.isReplyMode()) {
+          form.setReplyMode(conversationId);
+        }
+      },
+      onReplySuccess: (submittedText) => {
+        // Add user reply to conversation history
+        if (conversationHistory) {
+          conversationHistory.addUserMessage(submittedText);
+        }
+        console.log('[HeyDev] Reply sent');
       },
       onError: (error) => {
-        console.error('[HeyDev] Feedback submission failed:', error);
+        console.error('[HeyDev] Submission failed:', error);
       },
       onClose: () => {
         panel.close();
