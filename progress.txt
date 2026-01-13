@@ -35,7 +35,7 @@ Branch: ralph/heydev-feedback-widget
 | US-027 | User follow-up replies | complete |
 | US-028 | Dashboard project setup | complete |
 | US-029 | Dashboard magic link authentication | complete |
-| US-030 | Dashboard API key generation | pending |
+| US-030 | Dashboard API key generation | complete |
 | US-031 | Dashboard notification channel list | pending |
 | US-032 | Dashboard webhook channel configuration | pending |
 | US-033 | Dashboard email channel configuration | pending |
@@ -770,5 +770,28 @@ Branch: ralph/heydev-feedback-widget
   - Magic link tokens are one-time use (usedAt column tracks this)
   - Email service detects RESEND_API_KEY env var to switch from console to real emails
   - Redirect from verify endpoint goes directly to dashboard URL (cross-origin)
+
+---
+
+## 2026-01-13 - US-030: Dashboard API key generation
+- What was implemented:
+  - API key management routes (GET, POST, DELETE /api/keys)
+  - Session-based authentication via getAuthenticatedUser helper
+  - API key format: hd_live_{32 hex chars} for easy identification
+  - Key prefix display (first 12 chars + ****) for subsequent views
+  - Setup page shows Generate API Key button when no key exists
+  - On generation: warning banner, full key with copy button, script snippet
+  - On refresh: Active badge, key prefix, placeholder snippet
+- Files changed:
+  - server/src/routes/keys.ts (new API key management routes)
+  - server/src/index.ts (mounted keys routes)
+  - dashboard/src/pages/SetupPage.tsx (API key generation UI)
+- **Learnings for future iterations:**
+  - API keys stored plain for validation but only prefix returned via GET
+  - Use getCookie from 'hono/cookie' for session-based auth in routes
+  - generateApiKey() uses crypto.randomBytes(16).toString('hex')
+  - getKeyPrefix() returns first 12 chars + '****' for display
+  - Setup page uses separate states for apiKeyInfo (existing) vs generatedKey (just created)
+  - Copy buttons use navigator.clipboard with fallback to document.execCommand
 
 ---

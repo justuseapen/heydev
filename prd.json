@@ -490,8 +490,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 30,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Key stored plain for validation, but only prefix shown after initial display"
     },
     {
       "id": "US-031",
