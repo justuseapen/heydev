@@ -1,6 +1,7 @@
 /**
  * Webhook Notification Sender
  * Sends feedback to configured webhook endpoints with HMAC-SHA256 signatures
+ * Includes automatic retry for failed deliveries
  */
 
 import { createHmac } from 'crypto';
@@ -11,6 +12,7 @@ import {
   type FeedbackContext,
 } from './channelRouter.js';
 import type { Channel } from '../db/index.js';
+import { initRetryQueue, queueForRetry } from './webhookRetryQueue.js';
 
 /**
  * Webhook channel configuration stored in channel.config
@@ -50,14 +52,15 @@ function generateSignature(payload: string, secret: string): string {
 }
 
 /**
- * Send feedback to a webhook endpoint
+ * Internal function to send a webhook request (without retry queueing)
+ * Used by both initial send and retry attempts
  * @param channel - The channel configuration
  * @param feedback - The feedback data
  * @param context - The context data
  * @param sessionId - The session ID
  * @returns Result of the webhook delivery
  */
-export async function sendWebhook(
+async function sendWebhookRequest(
   channel: Channel,
   feedback: FeedbackData,
   context: FeedbackContext,
@@ -161,8 +164,38 @@ export async function sendWebhook(
 }
 
 /**
+ * Send feedback to a webhook endpoint with automatic retry on failure
+ * @param channel - The channel configuration
+ * @param feedback - The feedback data
+ * @param context - The context data
+ * @param sessionId - The session ID
+ * @returns Result of the webhook delivery
+ */
+export async function sendWebhook(
+  channel: Channel,
+  feedback: FeedbackData,
+  context: FeedbackContext,
+  sessionId: string
+): Promise<ChannelResult> {
+  // Attempt the initial send
+  const result = await sendWebhookRequest(channel, feedback, context, sessionId);
+
+  // If failed, queue for retry (unless it's a config error)
+  if (!result.success && result.error !== 'Webhook URL not configured') {
+    queueForRetry(channel, feedback, context, sessionId);
+  }
+
+  return result;
+}
+
+/**
  * Register the webhook sender with the channel router
+ * Also initializes the retry queue with the internal send function
  */
 export function registerWebhookSender(): void {
+  // Initialize retry queue with the internal send function (doesn't re-queue)
+  initRetryQueue(sendWebhookRequest);
+
+  // Register the main send function with the channel router
   registerChannelSender('webhook', sendWebhook);
 }
