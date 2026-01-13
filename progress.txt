@@ -27,9 +27,9 @@ Branch: ralph/heydev-feedback-widget
 | US-019 | Widget Vite build configuration | complete |
 | US-020 | Notification channel router | complete |
 | US-021 | Webhook notification sender | complete |
-| US-022 | Webhook retry logic | pending |
-| US-023 | Webhook reply endpoint | pending |
-| US-024 | SSE endpoint for real-time replies | pending |
+| US-022 | Webhook retry logic | complete |
+| US-023 | Webhook reply endpoint | complete |
+| US-024 | SSE endpoint for real-time replies | complete |
 | US-025 | Widget SSE connection for replies | pending |
 | US-026 | Conversation history in widget | pending |
 | US-027 | User follow-up replies | pending |
@@ -552,5 +552,71 @@ Branch: ralph/heydev-feedback-widget
   - Check `error.name === 'AbortError'` to detect timeout vs network errors
   - WebhookConfig interface: { url: string, secret?: string, headers?: Record<string, string> }
   - Register senders at server startup to ensure they're available when feedback routes trigger
+
+---
+
+## 2026-01-12 - US-022
+- What was implemented:
+  - Webhook retry queue module in server/src/services/webhookRetryQueue.ts
+  - In-memory queue using Map<string, RetryItem> (no external dependencies)
+  - Exponential backoff delays: 1s, 4s, 16s (base 4: 4^0, 4^1, 4^2 seconds)
+  - Maximum 3 retry attempts with automatic removal after final failure
+  - Console logging for retry attempts and final failures
+  - Queue processing runs every second when items are pending
+  - Updated webhookSender.ts to queue failed deliveries (except config errors)
+  - Internal sendWebhookRequest() function for retry queue (doesn't re-queue)
+  - Retry queue initialized during registerWebhookSender() at server startup
+- Files changed:
+  - server/src/services/webhookRetryQueue.ts (new retry queue module)
+  - server/src/services/webhookSender.ts (integrated retry queueing)
+- **Learnings for future iterations:**
+  - Separate internal send function from public send function when implementing retry logic
+  - Use Map with unique IDs for in-memory queue management
+  - setTimeout with recursive scheduling for periodic background tasks
+  - ESLint rule: use `new Map<K, V>()` not `Map<K, V>: Map = new Map()` for generic constructors
+  - Exponential backoff formula: base^attempt seconds (e.g., 4^0=1s, 4^1=4s, 4^2=16s)
+
+---
+
+## 2026-01-12 - US-023
+- What was implemented:
+  - POST /api/webhook/reply endpoint for developers to send replies to users
+  - Validates API key via apiKeyAuth middleware (protected route)
+  - Finds active conversation by session_id and api_key_id
+  - Returns 404 if conversation not found for session_id
+  - Stores outbound message in messages table with direction 'outbound'
+  - Returns JSON with success status, message_id, and conversation_id
+- Files changed:
+  - server/src/routes/webhookReply.ts (new webhook reply route handler)
+  - server/src/index.ts (imported and mounted webhookReplyRoutes under /api/webhook)
+- **Learnings for future iterations:**
+  - Webhook routes mounted under /api/webhook path (full path: POST /api/webhook/reply)
+  - Outbound messages stored as plain text in content field (unlike inbound which uses JSON)
+  - Use .returning() to get inserted record with auto-generated id for response
+
+---
+
+## 2026-01-12 - US-024
+- What was implemented:
+  - SSE endpoint at GET /api/events/:sessionId for real-time message delivery
+  - SSE Manager service using Node.js EventEmitter for pub/sub pattern
+  - Uses Hono's streamSSE() helper for Server-Sent Events streaming
+  - Connection event sent when client connects
+  - Heartbeat event every 30 seconds to keep connection alive
+  - Message event when outbound messages created (via webhookReply route)
+  - Graceful disconnect handling with stream.onAbort() callback
+  - Route mounted without API key auth (widget connects by session ID)
+- Files changed:
+  - server/src/services/sseManager.ts (new SSE manager with EventEmitter pub/sub)
+  - server/src/routes/events.ts (new SSE endpoint route)
+  - server/src/routes/webhookReply.ts (emit SSE event after storing outbound message)
+  - server/src/index.ts (imported and mounted events routes)
+- **Learnings for future iterations:**
+  - Use Hono's streamSSE() from 'hono/streaming' for SSE endpoints
+  - EventEmitter with session-based event names (message:{sessionId}) for targeted delivery
+  - stream.onAbort() returns a Promise that resolves when client disconnects
+  - SSE routes should be mounted outside API key protected routes (widget has no API key)
+  - Set EventEmitter.setMaxListeners(1000) for many concurrent connections
+  - SSE data must be JSON.stringify()'d for complex objects
 
 ---

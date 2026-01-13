@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
 import { db, conversations, messages } from '../db/index.js';
+import { emitSessionMessage } from '../services/sseManager.js';
 
 /**
  * Webhook reply request body
@@ -62,6 +63,13 @@ webhookReplyRoutes.post('/reply', async (c) => {
         content: body.message,
       })
       .returning();
+
+    // Emit SSE event to notify connected widget
+    emitSessionMessage(body.session_id, {
+      text: body.message,
+      timestamp: newMessage.createdAt,
+      messageId: newMessage.id,
+    });
 
     return c.json({
       success: true,

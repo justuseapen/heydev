@@ -12,6 +12,7 @@ import { uploadRoutes } from './routes/upload.js';
 import { transcribeRoutes } from './routes/transcribe.js';
 import { feedbackRoutes } from './routes/feedback.js';
 import { webhookReplyRoutes } from './routes/webhookReply.js';
+import { eventsRoutes } from './routes/events.js';
 import { registerWebhookSender } from './services/webhookSender.js';
 
 export const VERSION = '0.1.0';
@@ -31,6 +32,9 @@ app.get('/health', (c) => {
 
 // Serve uploaded files statically at GET /uploads/:filename
 app.use('/uploads/*', serveStatic({ root: './' }));
+
+// SSE endpoint for real-time message delivery (no API key required, uses session ID)
+app.route('/api/events', eventsRoutes);
 
 // Protected API routes - require API key authentication
 const api = new Hono();
