@@ -39,7 +39,7 @@ Branch: ralph/heydev-feedback-widget
 | US-031 | Dashboard notification channel list | complete |
 | US-032 | Dashboard webhook channel configuration | complete |
 | US-033 | Dashboard email channel configuration | complete |
-| US-034 | Email notification sender | pending |
+| US-034 | Email notification sender | complete |
 | US-035 | Docker Compose for self-hosting | pending |
 | US-036 | Widget dark mode support | pending |
 | US-037 | Widget accessibility | pending |
@@ -873,5 +873,29 @@ Branch: ralph/heydev-feedback-widget
   - Multi-step modal pattern: use step state ('email' | 'verify' | 'verified')
   - Input restriction for digits only: e.target.value.replace(/\D/g, '').slice(0, 6)
   - EmailConfig interface: { email: string, verified?: boolean }
+
+---
+
+## 2026-01-13 - US-034: Email notification sender
+- What was implemented:
+  - Email notification sender service (server/src/services/emailNotificationSender.ts)
+  - HTML email template with feedback text, screenshot, context table
+  - Plain text fallback for email clients without HTML support
+  - Subject line: 'New feedback from [page path]' using URL parsing
+  - Console errors section in email with red styling
+  - Validates email is configured and verified before sending
+  - Escapes HTML in user content to prevent XSS
+  - Registers with channelRouter using registerEmailSender()
+  - Uses existing Resend integration from emailService.ts
+- Files changed:
+  - server/src/services/emailNotificationSender.ts (new email notification sender)
+  - server/src/index.ts (imported and registered email sender on startup)
+- **Learnings for future iterations:**
+  - Email notification senders follow same pattern as webhookSender.ts
+  - Use registerChannelSender() from channelRouter to register channel-specific senders
+  - EmailConfig interface matches what dashboard saves: { email: string, verified?: boolean }
+  - escapeHtml() function needed to prevent XSS in email content from user feedback
+  - getPagePath() extracts path from URL for cleaner subject line (not full URL)
+  - Plain text fallback is important for email accessibility
 
 ---
