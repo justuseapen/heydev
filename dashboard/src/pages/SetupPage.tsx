@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { WebhookConfigModal } from '../components/WebhookConfigModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -21,12 +22,19 @@ interface GeneratedKey {
   createdAt: string;
 }
 
+interface WebhookConfig {
+  url: string;
+  secret?: string;
+  headers?: Record<string, string>;
+}
+
 interface ChannelInfo {
   id?: number;
   type: 'slack' | 'email' | 'sms' | 'webhook';
   enabled: boolean;
   verified: boolean;
   configured: boolean;
+  config?: WebhookConfig | Record<string, unknown>;
 }
 
 // Channel metadata for display
@@ -112,6 +120,8 @@ export function SetupPage() {
   const [copied, setCopied] = useState(false);
   const [channels, setChannels] = useState<ChannelInfo[]>([]);
   const [togglingChannel, setTogglingChannel] = useState<string | null>(null);
+  const [webhookModalOpen, setWebhookModalOpen] = useState(false);
+  const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | undefined>(undefined);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -281,8 +291,52 @@ export function SetupPage() {
   };
 
   const handleConfigureChannel = (channelType: string) => {
-    // For now, just show an alert - this will be implemented in US-032/033
-    alert(`Configure ${CHANNEL_META[channelType]?.name || channelType} - Coming in next update!`);
+    if (channelType === 'webhook') {
+      // Find the webhook channel to get its current config
+      const webhookChannel = channels.find((ch) => ch.type === 'webhook');
+      setWebhookConfig(webhookChannel?.config as WebhookConfig | undefined);
+      setWebhookModalOpen(true);
+    } else {
+      // Other channels will be implemented in future stories
+      alert(`Configure ${CHANNEL_META[channelType]?.name || channelType} - Coming soon!`);
+    }
+  };
+
+  const handleSaveWebhookConfig = async (config: WebhookConfig) => {
+    const response = await fetch(`${API_URL}/api/channels`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'webhook',
+        config,
+        enabled: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save configuration');
+    }
+
+    const data = await response.json();
+
+    // Update local state
+    setChannels((prev) =>
+      prev.map((ch) =>
+        ch.type === 'webhook'
+          ? {
+              ...ch,
+              enabled: true,
+              configured: true,
+              verified: true, // Webhook is verified on successful config save
+              config,
+            }
+          : ch
+      )
+    );
+
+    return data;
   };
 
   if (isLoading) {
@@ -606,6 +660,14 @@ export function SetupPage() {
           )}
         </div>
       </div>
+
+      {/* Webhook Configuration Modal */}
+      <WebhookConfigModal
+        isOpen={webhookModalOpen}
+        onClose={() => setWebhookModalOpen(false)}
+        onSave={handleSaveWebhookConfig}
+        initialConfig={webhookConfig}
+      />
     </div>
   );
 }

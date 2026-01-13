@@ -253,6 +253,133 @@ channelsRoutes.patch('/:type/toggle', async (c) => {
 });
 
 /**
+ * GET /api/channels/webhook/secret
+ * Generate a new webhook signing secret
+ */
+channelsRoutes.get('/webhook/secret', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const crypto = await import('crypto');
+  const secret = 'whsec_' + crypto.randomBytes(24).toString('hex');
+
+  return c.json({ secret });
+});
+
+/**
+ * POST /api/channels/webhook/test
+ * Send a test webhook to verify the configuration
+ */
+channelsRoutes.post('/webhook/test', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+
+  if (!apiKey) {
+    return c.json({ error: 'API key required' }, 400);
+  }
+
+  const body = await c.req.json() as {
+    url: string;
+    secret?: string;
+    headers?: Record<string, string>;
+  };
+
+  if (!body.url) {
+    return c.json({ error: 'Webhook URL is required' }, 400);
+  }
+
+  // Validate URL format
+  try {
+    new URL(body.url);
+  } catch {
+    return c.json({ error: 'Invalid URL format' }, 400);
+  }
+
+  // Build test payload
+  const testPayload = {
+    event: 'test',
+    message: 'This is a test webhook from HeyDev',
+    timestamp: new Date().toISOString(),
+  };
+
+  const payloadJson = JSON.stringify(testPayload);
+
+  // Build headers
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'HeyDev-Webhook/1.0',
+  };
+
+  // Add custom headers
+  if (body.headers) {
+    for (const [key, value] of Object.entries(body.headers)) {
+      if (key && value) {
+        headers[key] = value;
+      }
+    }
+  }
+
+  // Add HMAC signature if secret is provided
+  if (body.secret) {
+    const crypto = await import('crypto');
+    const hmac = crypto.createHmac('sha256', body.secret);
+    hmac.update(payloadJson);
+    headers['X-HeyDev-Signature'] = hmac.digest('hex');
+  }
+
+  try {
+    // Create abort controller for timeout (5 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(body.url, {
+      method: 'POST',
+      headers,
+      body: payloadJson,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      return c.json({
+        success: true,
+        statusCode: response.status,
+        message: 'Webhook test successful!',
+      });
+    }
+
+    return c.json({
+      success: false,
+      statusCode: response.status,
+      error: `HTTP ${response.status}: ${response.statusText}`,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return c.json({
+        success: false,
+        error: 'Request timed out after 5 seconds',
+      });
+    }
+
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
  * GET /api/channels/:type
  * Get a specific channel's configuration
  */
