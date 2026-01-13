@@ -36,7 +36,7 @@ Branch: ralph/heydev-feedback-widget
 | US-028 | Dashboard project setup | complete |
 | US-029 | Dashboard magic link authentication | complete |
 | US-030 | Dashboard API key generation | complete |
-| US-031 | Dashboard notification channel list | pending |
+| US-031 | Dashboard notification channel list | complete |
 | US-032 | Dashboard webhook channel configuration | pending |
 | US-033 | Dashboard email channel configuration | pending |
 | US-034 | Email notification sender | pending |
@@ -793,5 +793,30 @@ Branch: ralph/heydev-feedback-widget
   - getKeyPrefix() returns first 12 chars + '****' for display
   - Setup page uses separate states for apiKeyInfo (existing) vs generatedKey (just created)
   - Copy buttons use navigator.clipboard with fallback to document.execCommand
+
+---
+
+## 2026-01-13 - US-031: Dashboard notification channel list
+- What was implemented:
+  - Channel management API routes (GET, POST, PATCH /api/channels)
+  - GET /api/channels returns all four channel types with status
+  - PATCH /api/channels/:type/toggle enables/disables a channel
+  - Channel cards UI for Slack, Email, SMS, Webhook in SetupPage
+  - Each card displays: icon, name, description, status badge, Configure button, toggle switch
+  - Status badges: "Connected" (green), "Pending" (yellow), "Not configured" (gray)
+  - Icon color changes based on enabled state (indigo when enabled, gray when disabled)
+  - Toggle switches with accessible switch role and aria-checked/aria-label
+  - Configure button shows placeholder alert (implemented in US-032/033)
+- Files changed:
+  - server/src/routes/channels.ts (new channel management routes)
+  - server/src/index.ts (mounted channels routes)
+  - dashboard/src/pages/SetupPage.tsx (channel cards UI with icons, toggles, badges)
+- **Learnings for future iterations:**
+  - Channel routes use same getAuthenticatedUser pattern as keys routes
+  - channelTypes array from schema used for iteration and validation
+  - Toggle state stored in channels table with apiKeyId foreign key
+  - CHANNEL_META object maps channel types to display properties (icon, name, description)
+  - React switch pattern: role="switch" aria-checked={enabled} with translate-x animation
+  - API key required before channels can be configured (guard in UI)
 
 ---
