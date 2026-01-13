@@ -81,6 +81,8 @@
       createFloatingButton,
       createFeedbackPanel,
       createFeedbackForm,
+      createMessageDisplay,
+      createSSEClient,
       installErrorInterceptor,
       getSessionId
     } from './src/index.ts';
@@ -98,32 +100,90 @@
 
     // Create the feedback form inside the panel
     let feedbackForm = null;
+    let messageDisplay = null;
+    let sseClient = null;
+    let unreadCount = 0;
+    let hasSentFeedback = false;
+
+    // Log helper
+    const logMessage = (message, color = '#333') => {
+      const log = document.getElementById('log');
+      const p = document.createElement('p');
+      p.style.color = color;
+      p.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+      log.appendChild(p);
+      log.scrollTop = log.scrollHeight;
+    };
+
+    // Handle incoming SSE message
+    const handleSSEMessage = (message) => {
+      logMessage(`Developer reply: "${message.text}"`, '#6366f1');
+
+      // Add message to display if it exists
+      if (messageDisplay) {
+        messageDisplay.addDeveloperMessage(message);
+      }
+
+      // If panel is closed, increment unread count and show badge
+      if (!panel.isOpen()) {
+        unreadCount++;
+        button.showBadge(unreadCount);
+        logMessage(`Badge updated: ${unreadCount} unread`, '#f59e0b');
+      }
+    };
+
+    // Connect to SSE
+    const connectSSE = () => {
+      if (sseClient) return;
+
+      const sessionId = getSessionId();
+      logMessage(`Connecting to SSE for session: ${sessionId}`, '#6366f1');
+
+      sseClient = createSSEClient({
+        endpoint: getEndpoint(),
+        sessionId,
+        onMessage: handleSSEMessage,
+        onConnected: () => {
+          logMessage('SSE connected', 'green');
+        },
+        onDisconnected: () => {
+          logMessage('SSE disconnected', '#f59e0b');
+        },
+        onError: (error) => {
+          logMessage(`SSE error: ${error.message}`, 'red');
+        },
+      });
+    };
 
     // Create form when panel is opened (to get latest config)
     const createForm = () => {
       if (feedbackForm) {
         feedbackForm.destroy();
       }
+      if (messageDisplay) {
+        messageDisplay.destroy();
+      }
+
+      // Create message display first (shows above form)
+      messageDisplay = createMessageDisplay({
+        container: panel.body,
+      });
 
       feedbackForm = createFeedbackForm({
         container: panel.body,
         endpoint: getEndpoint(),
         apiKey: getApiKey(),
         onSuccess: (conversationId) => {
-          const log = document.getElementById('log');
-          const p = document.createElement('p');
-          p.style.color = 'green';
-          p.textContent = `[${new Date().toLocaleTimeString()}] ✓ Feedback sent! Conversation ID: ${conversationId}`;
-          log.appendChild(p);
-          log.scrollTop = log.scrollHeight;
+          logMessage(`Feedback sent! Conversation ID: ${conversationId}`, 'green');
+
+          // Connect to SSE after first feedback sent
+          if (!hasSentFeedback) {
+            hasSentFeedback = true;
+            connectSSE();
+          }
         },
         onError: (error) => {
-          const log = document.getElementById('log');
-          const p = document.createElement('p');
-          p.style.color = 'red';
-          p.textContent = `[${new Date().toLocaleTimeString()}] ✗ Error: ${error}`;
-          log.appendChild(p);
-          log.scrollTop = log.scrollHeight;
+          logMessage(`Error: ${error}`, 'red');
         },
         onClose: () => {
           panel.close();
@@ -138,20 +198,18 @@
     const log = document.getElementById('log');
 
     document.addEventListener('heydev:open', () => {
-      const p = document.createElement('p');
-      p.textContent = `[${new Date().toLocaleTimeString()}] heydev:open event fired! (panel opening)`;
-      log.appendChild(p);
-      log.scrollTop = log.scrollHeight;
+      logMessage('heydev:open event fired! (panel opening)');
+
+      // Clear unread count and badge when opening panel
+      unreadCount = 0;
+      button.hideBadge();
 
       // Create/recreate form with current config
       createForm();
     });
 
     document.addEventListener('heydev:close', () => {
-      const p = document.createElement('p');
-      p.textContent = `[${new Date().toLocaleTimeString()}] heydev:close event fired! (panel closing)`;
-      log.appendChild(p);
-      log.scrollTop = log.scrollHeight;
+      logMessage('heydev:close event fired! (panel closing)');
     });
 
     // Log initial session info
@@ -169,6 +227,7 @@
     window.heydevButton = button;
     window.heydevPanel = panel;
     window.heydevGetForm = () => feedbackForm;
+    window.heydevSSE = () => sseClient;
   </script>
 </body>
 </html>

@@ -36,6 +36,11 @@ export {
   type FeedbackFormOptions,
   type FeedbackFormInstance,
 } from './components/FeedbackForm';
+export {
+  createMessageDisplay,
+  type MessageDisplayOptions,
+  type MessageDisplayInstance,
+} from './components/MessageDisplay';
 
 // Service exports
 export {
@@ -43,6 +48,12 @@ export {
   type SubmitFeedbackOptions,
   type SubmitFeedbackResult,
 } from './services/submitFeedback';
+export {
+  createSSEClient,
+  type SSEClientOptions,
+  type SSEClientInstance,
+  type SSEMessage,
+} from './services/sseClient';
 
 // Utility exports
 export { captureContext, type PageContext } from './utils/context';

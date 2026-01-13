@@ -7,7 +7,10 @@
 import { createFloatingButton, type FloatingButtonInstance } from './components/FloatingButton';
 import { createFeedbackPanel, type FeedbackPanelInstance } from './components/FeedbackPanel';
 import { createFeedbackForm, type FeedbackFormInstance } from './components/FeedbackForm';
+import { createMessageDisplay, type MessageDisplayInstance } from './components/MessageDisplay';
+import { createSSEClient, type SSEClientInstance, type SSEMessage } from './services/sseClient';
 import { installErrorInterceptor } from './utils/consoleErrors';
+import { getSessionId } from './utils/session';
 
 /** Configuration options read from script tag data attributes */
 interface WidgetConfig {
@@ -133,6 +136,13 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
 
   // Create components
   let form: FeedbackFormInstance | null = null;
+  let messageDisplay: MessageDisplayInstance | null = null;
+  let sseClient: SSEClientInstance | null = null;
+
+  // Track unread messages when panel is closed
+  let unreadCount = 0;
+  // Track if we've sent feedback (to know when to connect SSE)
+  let hasSentFeedback = false;
 
   // Create floating button
   const button: FloatingButtonInstance = createFloatingButton({ container });
@@ -140,18 +150,72 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
   // Create feedback panel
   const panel: FeedbackPanelInstance = createFeedbackPanel({ container });
 
+  /**
+   * Handle incoming SSE message
+   */
+  const handleSSEMessage = (message: SSEMessage) => {
+    // Add message to display if it exists
+    if (messageDisplay) {
+      messageDisplay.addDeveloperMessage(message);
+    }
+
+    // If panel is closed, increment unread count and show badge
+    if (!panel.isOpen()) {
+      unreadCount++;
+      button.showBadge(unreadCount);
+    }
+  };
+
+  /**
+   * Connect to SSE if not already connected
+   */
+  const connectSSE = () => {
+    if (sseClient) return; // Already connected
+
+    const sessionId = getSessionId();
+    sseClient = createSSEClient({
+      endpoint: config.endpoint,
+      sessionId,
+      onMessage: handleSSEMessage,
+      onConnected: () => {
+        console.log('[HeyDev] SSE connected');
+      },
+      onDisconnected: () => {
+        console.log('[HeyDev] SSE disconnected');
+      },
+      onError: (error) => {
+        console.warn('[HeyDev] SSE error:', error.message);
+      },
+    });
+  };
+
   // Create form when panel opens
   const createForm = () => {
     if (form) {
       form.destroy();
     }
+    if (messageDisplay) {
+      messageDisplay.destroy();
+    }
+
+    // Create message display first (shows above form)
+    messageDisplay = createMessageDisplay({
+      container: panel.body,
+    });
 
     form = createFeedbackForm({
       container: panel.body,
       endpoint: config.endpoint,
       apiKey: config.apiKey,
-      onSuccess: () => {
+      onSuccess: (conversationId) => {
         // Form handles success message and auto-close
+        console.log('[HeyDev] Feedback sent, conversation:', conversationId);
+
+        // Connect to SSE after first feedback sent
+        if (!hasSentFeedback) {
+          hasSentFeedback = true;
+          connectSSE();
+        }
       },
       onError: (error) => {
         console.error('[HeyDev] Feedback submission failed:', error);
@@ -167,6 +231,9 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
 
   // Listen for open event (within shadow DOM)
   container.addEventListener('heydev:open', () => {
+    // Clear unread count and badge when opening panel
+    unreadCount = 0;
+    button.hideBadge();
     createForm();
   });
 
@@ -174,6 +241,9 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
   const widget: HeyDevWidget = {
     version: VERSION,
     open: () => {
+      // Clear unread count and badge when opening panel
+      unreadCount = 0;
+      button.hideBadge();
       panel.open();
       createForm();
     },
@@ -182,6 +252,15 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
     },
     isOpen: () => panel.isOpen(),
     destroy: () => {
+      // Disconnect SSE
+      if (sseClient) {
+        sseClient.disconnect();
+        sseClient = null;
+      }
+
+      if (messageDisplay) {
+        messageDisplay.destroy();
+      }
       if (form) {
         form.destroy();
       }

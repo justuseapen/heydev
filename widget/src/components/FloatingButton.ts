@@ -45,6 +45,40 @@ const BUTTON_STYLES = `
     fill: currentColor;
   }
 
+  /* Notification badge styles */
+  .heydev-notification-badge {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    background-color: var(--heydev-badge-bg, #ef4444);
+    color: var(--heydev-badge-text, white);
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    animation: heydev-badge-pop 0.3s ease-out;
+  }
+
+  @keyframes heydev-badge-pop {
+    0% {
+      transform: scale(0);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.2);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
   @keyframes heydev-button-entrance {
     from {
       opacity: 0;
@@ -62,6 +96,9 @@ const BUTTON_STYLES = `
     }
     .heydev-floating-button:hover {
       transform: none;
+    }
+    .heydev-notification-badge {
+      animation: none;
     }
   }
 `;
@@ -85,6 +122,12 @@ export interface FloatingButtonInstance {
   show: () => void;
   /** Hide the button */
   hide: () => void;
+  /** Show notification badge with count */
+  showBadge: (count: number) => void;
+  /** Hide notification badge */
+  hideBadge: () => void;
+  /** Get current badge count */
+  getBadgeCount: () => number;
 }
 
 /**
@@ -113,6 +156,30 @@ export function createFloatingButton(
   button.setAttribute('type', 'button');
   button.innerHTML = CHAT_ICON;
 
+  // Badge state
+  let badgeCount = 0;
+  let badgeElement: HTMLSpanElement | null = null;
+
+  // Update badge display
+  const updateBadge = () => {
+    if (badgeCount > 0) {
+      if (!badgeElement) {
+        badgeElement = document.createElement('span');
+        badgeElement.className = 'heydev-notification-badge';
+        button.appendChild(badgeElement);
+      }
+      // Show count, max 99+
+      badgeElement.textContent = badgeCount > 99 ? '99+' : String(badgeCount);
+      button.setAttribute('aria-label', `Open feedback (${badgeCount} new message${badgeCount > 1 ? 's' : ''})`);
+    } else {
+      if (badgeElement) {
+        badgeElement.remove();
+        badgeElement = null;
+      }
+      button.setAttribute('aria-label', 'Open feedback');
+    }
+  };
+
   // Dispatch custom event on click
   button.addEventListener('click', () => {
     const event = new CustomEvent('heydev:open', {
@@ -136,5 +203,14 @@ export function createFloatingButton(
     hide: () => {
       button.style.display = 'none';
     },
+    showBadge: (count: number) => {
+      badgeCount = Math.max(0, count);
+      updateBadge();
+    },
+    hideBadge: () => {
+      badgeCount = 0;
+      updateBadge();
+    },
+    getBadgeCount: () => badgeCount,
   };
 }
