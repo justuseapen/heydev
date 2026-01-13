@@ -8,6 +8,13 @@
       "when": 1768254798070,
       "tag": "0000_abandoned_proteus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1768275650720,
+      "tag": "0001_faulty_vanisher",
+      "breakpoints": true
     }
   ]
 }

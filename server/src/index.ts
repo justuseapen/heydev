@@ -14,6 +14,7 @@ import { feedbackRoutes } from './routes/feedback.js';
 import { replyRoutes } from './routes/reply.js';
 import { webhookReplyRoutes } from './routes/webhookReply.js';
 import { eventsRoutes } from './routes/events.js';
+import { authRoutes } from './routes/auth.js';
 import { registerWebhookSender } from './services/webhookSender.js';
 
 export const VERSION = '0.1.0';
@@ -36,6 +37,9 @@ app.use('/uploads/*', serveStatic({ root: './' }));
 
 // SSE endpoint for real-time message delivery (no API key required, uses session ID)
 app.route('/api/events', eventsRoutes);
+
+// Auth routes (public - no API key required)
+app.route('/api/auth', authRoutes);
 
 // Protected API routes - require API key authentication
 const api = new Hono();
