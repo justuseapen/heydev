@@ -34,7 +34,7 @@ Branch: ralph/heydev-feedback-widget
 | US-026 | Conversation history in widget | complete |
 | US-027 | User follow-up replies | complete |
 | US-028 | Dashboard project setup | complete |
-| US-029 | Dashboard magic link authentication | pending |
+| US-029 | Dashboard magic link authentication | complete |
 | US-030 | Dashboard API key generation | pending |
 | US-031 | Dashboard notification channel list | pending |
 | US-032 | Dashboard webhook channel configuration | pending |
@@ -739,5 +739,36 @@ Branch: ralph/heydev-feedback-widget
   - Layout uses React Router's Outlet component for nested routes
   - TailwindCSS configured for .tsx files in content array
   - Dashboard components are functional React components (not factory pattern like widget)
+
+---
+
+## 2026-01-13 - US-029: Dashboard magic link authentication
+- What was implemented:
+  - Users, auth_tokens, and sessions tables in database schema
+  - POST /api/auth/magic-link endpoint sends magic link email (15-minute expiry)
+  - GET /api/auth/verify validates token, creates 7-day session, sets httpOnly cookie
+  - GET /api/auth/me returns authenticated user info
+  - POST /api/auth/logout clears session
+  - Email service with Resend API integration (console fallback in dev)
+  - LoginPage with form submission, loading states, success/error messages
+  - LoginPage handles error query params from failed verifications
+  - SetupPage requires authentication, shows user email, has sign out button
+  - Vite client types added to dashboard tsconfig
+- Files changed:
+  - server/src/db/schema.ts (added users, authTokens, sessions tables)
+  - server/drizzle/0001_faulty_vanisher.sql (migration for new tables)
+  - server/src/services/emailService.ts (new email service with magic link template)
+  - server/src/routes/auth.ts (magic-link, verify, me, logout endpoints)
+  - server/src/index.ts (mounted auth routes)
+  - dashboard/src/pages/LoginPage.tsx (full implementation with states)
+  - dashboard/src/pages/SetupPage.tsx (auth check and user display)
+  - dashboard/tsconfig.json (added vite/client types)
+- **Learnings for future iterations:**
+  - Use Hono's setCookie/getCookie from 'hono/cookie' for session management
+  - httpOnly cookies with sameSite: 'Lax' for CSRF protection
+  - Dashboard fetches must use credentials: 'include' for cookies to work
+  - Magic link tokens are one-time use (usedAt column tracks this)
+  - Email service detects RESEND_API_KEY env var to switch from console to real emails
+  - Redirect from verify endpoint goes directly to dashboard URL (cross-origin)
 
 ---

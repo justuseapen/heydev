@@ -473,8 +473,8 @@
         "Verify in browser using dev-browser skill"
       ],
       "priority": 29,
-      "passes": false,
-      "notes": ""
+      "passes": true,
+      "notes": "Implemented magic link auth with users, auth_tokens, sessions tables. Email service with Resend integration (console fallback in dev)."
     },
     {
       "id": "US-030",
