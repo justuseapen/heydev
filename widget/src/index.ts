@@ -31,6 +31,18 @@ export {
   type VoiceButtonOptions,
   type VoiceButtonInstance,
 } from './components/VoiceButton';
+export {
+  createFeedbackForm,
+  type FeedbackFormOptions,
+  type FeedbackFormInstance,
+} from './components/FeedbackForm';
+
+// Service exports
+export {
+  submitFeedback,
+  type SubmitFeedbackOptions,
+  type SubmitFeedbackResult,
+} from './services/submitFeedback';
 
 // Utility exports
 export { captureContext, type PageContext } from './utils/context';

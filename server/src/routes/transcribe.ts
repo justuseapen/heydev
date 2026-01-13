@@ -65,8 +65,18 @@ function cleanupRateLimitStore(): void {
   }
 }
 
-// Initialize OpenAI client (will use OPENAI_API_KEY env var)
-const openai = new OpenAI();
+// Lazy-initialize OpenAI client to avoid crash when env var is missing
+let openai: OpenAI | null = null;
+
+function getOpenAIClient(): OpenAI {
+  if (!openai) {
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable is not set');
+    }
+    openai = new OpenAI();
+  }
+  return openai;
+}
 
 export const transcribeRoutes = new Hono();
 
@@ -125,7 +135,8 @@ transcribeRoutes.post('/', async (c) => {
 
     // Convert File to the format OpenAI expects
     // OpenAI SDK accepts File objects from the Fetch API
-    const transcription = await openai.audio.transcriptions.create({
+    const client = getOpenAIClient();
+    const transcription = await client.audio.transcriptions.create({
       file: audioFile,
       model: 'whisper-1',
     });
