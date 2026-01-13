@@ -18,11 +18,13 @@ import { authRoutes } from './routes/auth.js';
 import { keysRoutes } from './routes/keys.js';
 import { channelsRoutes } from './routes/channels.js';
 import { registerWebhookSender } from './services/webhookSender.js';
+import { registerEmailSender } from './services/emailNotificationSender.js';
 
 export const VERSION = '0.1.0';
 
 // Register notification channel senders
 registerWebhookSender();
+registerEmailSender();
 
 const app = new Hono();
 
