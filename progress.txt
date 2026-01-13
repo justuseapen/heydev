@@ -41,7 +41,7 @@ Branch: ralph/heydev-feedback-widget
 | US-033 | Dashboard email channel configuration | complete |
 | US-034 | Email notification sender | complete |
 | US-035 | Docker Compose for self-hosting | complete |
-| US-036 | Widget dark mode support | pending |
+| US-036 | Widget dark mode support | complete |
 | US-037 | Widget accessibility | pending |
 
 ---
@@ -924,5 +924,32 @@ Branch: ralph/heydev-feedback-widget
   - Docker health checks use wget (more portable than curl in Alpine)
   - npm ci --workspace=server --omit=dev for production dependencies only
   - WORKDIR /app/server before CMD to run from correct directory
+
+---
+
+## 2026-01-13 - US-036: Widget dark mode support
+- What was implemented:
+  - Theme utility module (widget/src/utils/theme.ts) with light/dark color definitions
+  - 20 CSS custom properties defined for dark theme colors
+  - prefers-color-scheme media query detection for automatic theme selection
+  - data-theme attribute support on script tag ('light', 'dark', 'auto')
+  - getAutoThemeCSS() generates responsive CSS with @media query
+  - getThemeCSS() generates static CSS for explicit theme
+  - createThemeStyleElement() creates style element for Shadow DOM injection
+  - watchSystemTheme() utility for reacting to system theme changes
+  - Updated test page (index.html) with theme toggle buttons
+  - SHADOW_RESET_STYLES updated to use --heydev-text CSS variable
+- Files changed:
+  - widget/src/utils/theme.ts (new theme utility module)
+  - widget/src/widget.ts (theme integration in Shadow DOM)
+  - widget/src/index.ts (export theme utilities)
+  - widget/index.html (theme toggle controls for testing)
+- **Learnings for future iterations:**
+  - Theme CSS variables should be injected BEFORE component styles in Shadow DOM
+  - Use :host selector for CSS custom property definitions in Shadow DOM
+  - @media (prefers-color-scheme: dark) works inside Shadow DOM
+  - data-theme attribute on script tag allows host page to control widget theme
+  - Dark theme colors: lighter primary (#818cf8), dark backgrounds (#1f2937, #111827)
+  - Success/error colors need inverted contrast in dark mode
 
 ---
