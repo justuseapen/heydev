@@ -11,6 +11,7 @@ import { createConversationHistory, type ConversationHistoryInstance } from './c
 import { createSSEClient, type SSEClientInstance, type SSEMessage } from './services/sseClient';
 import { installErrorInterceptor } from './utils/consoleErrors';
 import { getSessionId } from './utils/session';
+import { createThemeStyleElement, type Theme } from './utils/theme';
 
 /** Configuration options read from script tag data attributes */
 interface WidgetConfig {
@@ -18,6 +19,8 @@ interface WidgetConfig {
   apiKey: string;
   /** Backend endpoint URL (default: https://api.heydev.io) */
   endpoint: string;
+  /** Theme setting: 'light', 'dark', or 'auto' (default: 'auto') */
+  theme: Theme;
 }
 
 /** The HeyDev widget public API */
@@ -54,7 +57,7 @@ const SHADOW_RESET_STYLES = `
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     font-size: 14px;
     line-height: 1.5;
-    color: #1f2937;
+    color: var(--heydev-text, #1f2937);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -88,16 +91,24 @@ function getConfigFromScript(): WidgetConfig | null {
 
   const endpoint = script.getAttribute('data-endpoint') || DEFAULT_ENDPOINT;
 
+  // Parse theme attribute: 'light', 'dark', or 'auto' (default)
+  const themeAttr = script.getAttribute('data-theme');
+  let theme: Theme = 'auto';
+  if (themeAttr === 'light' || themeAttr === 'dark') {
+    theme = themeAttr;
+  }
+
   return {
     apiKey,
     endpoint,
+    theme,
   };
 }
 
 /**
  * Create and inject the Shadow DOM container
  */
-function createShadowContainer(): ShadowRoot {
+function createShadowContainer(theme: Theme): ShadowRoot {
   // Create host element
   const host = document.createElement('div');
   host.id = 'heydev-widget';
@@ -105,6 +116,10 @@ function createShadowContainer(): ShadowRoot {
 
   // Attach shadow DOM
   const shadow = host.attachShadow({ mode: 'open' });
+
+  // Inject theme styles first (CSS custom properties)
+  const themeStyle = createThemeStyleElement(theme);
+  shadow.appendChild(themeStyle);
 
   // Inject reset styles
   const resetStyle = document.createElement('style');
@@ -130,8 +145,8 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
   // Install console error interceptor
   installErrorInterceptor();
 
-  // Create Shadow DOM container
-  const shadow = createShadowContainer();
+  // Create Shadow DOM container with theme
+  const shadow = createShadowContainer(config.theme);
   const container = shadow.querySelector('.heydev-container') as HTMLElement;
 
   // Create components

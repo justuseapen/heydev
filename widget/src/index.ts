@@ -76,3 +76,13 @@ export {
   type CapturedError,
 } from './utils/consoleErrors';
 export { getSessionId, clearSessionId } from './utils/session';
+export {
+  getSystemPreference,
+  resolveTheme,
+  getThemeCSS,
+  getAutoThemeCSS,
+  createThemeStyleElement,
+  watchSystemTheme,
+  type Theme,
+  type ResolvedTheme,
+} from './utils/theme';
