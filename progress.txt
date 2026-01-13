@@ -33,7 +33,7 @@ Branch: ralph/heydev-feedback-widget
 | US-025 | Widget SSE connection for replies | complete |
 | US-026 | Conversation history in widget | complete |
 | US-027 | User follow-up replies | complete |
-| US-028 | Dashboard project setup | pending |
+| US-028 | Dashboard project setup | complete |
 | US-029 | Dashboard magic link authentication | pending |
 | US-030 | Dashboard API key generation | pending |
 | US-031 | Dashboard notification channel list | pending |
@@ -62,6 +62,7 @@ Branch: ralph/heydev-feedback-widget
 - Protected routes pattern: create new Hono instance, apply middleware, mount with `app.route('/api', api)`
 - Widget build: Vite library mode with IIFE format, `npm run build` in widget/ outputs dist/widget.js
 - Heavy dependencies (html2canvas): load from CDN at runtime to keep bundle small
+- Dashboard: React + TailwindCSS + React Router, functional components, runs on port 5174
 
 ---
 
@@ -706,5 +707,37 @@ Branch: ralph/heydev-feedback-widget
   - FeedbackForm exposes isReplyMode() and setReplyMode(id) for mode control
   - Reply mode: isInReplyMode() closure function checks if currentConversationId is set
   - onReplySuccess callback notifies parent when reply succeeds (vs onSuccess for initial feedback)
+
+---
+
+## 2026-01-13 - US-028: Dashboard project setup
+- What was implemented:
+  - React app in /dashboard with Vite build tooling
+  - TailwindCSS configuration with PostCSS (tailwind.config.js, postcss.config.js)
+  - React Router with BrowserRouter and routes: /, /login, /setup
+  - Layout component with header, HeyDev logo, navigation, and outlet for child routes
+  - HomePage with welcome message and call-to-action buttons
+  - LoginPage with email input form for magic link (placeholder)
+  - SetupPage with API key and notification channels sections (placeholder)
+  - Vite config with React plugin and dev server on port 5174
+- Files changed:
+  - dashboard/package.json (added tailwindcss, postcss, autoprefixer, react-router-dom)
+  - dashboard/index.html (new HTML entry point)
+  - dashboard/vite.config.ts (new Vite config with React plugin)
+  - dashboard/tailwind.config.js (new Tailwind config)
+  - dashboard/postcss.config.js (new PostCSS config)
+  - dashboard/src/main.tsx (React entry point with BrowserRouter)
+  - dashboard/src/App.tsx (Routes configuration)
+  - dashboard/src/index.css (Tailwind directives)
+  - dashboard/src/components/Layout.tsx (Header + Outlet layout)
+  - dashboard/src/pages/HomePage.tsx (Landing page)
+  - dashboard/src/pages/LoginPage.tsx (Magic link login form)
+  - dashboard/src/pages/SetupPage.tsx (Setup configuration page)
+- **Learnings for future iterations:**
+  - Dashboard runs on port 5174 (different from widget's 5173 and server's 3000)
+  - Use `npm run dev` in dashboard/ to start dev server
+  - Layout uses React Router's Outlet component for nested routes
+  - TailwindCSS configured for .tsx files in content array
+  - Dashboard components are functional React components (not factory pattern like widget)
 
 ---
