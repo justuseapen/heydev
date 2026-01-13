@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+
+# Build outputs (will be generated in container)
+dist/
+*.tsbuildinfo
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data (will be mounted as volumes)
+uploads/
+server/data/
+
+# Documentation and config not needed in container
+*.md
+.prettierrc
+.prettierignore
+eslint.config.js
+tasks/
+scripts/
+
+# Dashboard and widget source (server only for now)
+dashboard/
+widget/
+
+# Claude code config
+.claude/
