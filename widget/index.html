@@ -81,7 +81,7 @@
       createFloatingButton,
       createFeedbackPanel,
       createFeedbackForm,
-      createMessageDisplay,
+      createConversationHistory,
       createSSEClient,
       installErrorInterceptor,
       getSessionId
@@ -97,10 +97,11 @@
     // Get configuration
     const getEndpoint = () => document.getElementById('endpoint').value || 'http://localhost:3000';
     const getApiKey = () => document.getElementById('apiKey').value || 'test-key';
+    const sessionId = getSessionId();
 
     // Create the feedback form inside the panel
     let feedbackForm = null;
-    let messageDisplay = null;
+    let conversationHistory = null;
     let sseClient = null;
     let unreadCount = 0;
     let hasSentFeedback = false;
@@ -119,9 +120,9 @@
     const handleSSEMessage = (message) => {
       logMessage(`Developer reply: "${message.text}"`, '#6366f1');
 
-      // Add message to display if it exists
-      if (messageDisplay) {
-        messageDisplay.addDeveloperMessage(message);
+      // Add message to conversation history if it exists
+      if (conversationHistory) {
+        conversationHistory.addDeveloperMessage(message.text, message.timestamp, message.messageId);
       }
 
       // If panel is closed, increment unread count and show badge
@@ -136,7 +137,6 @@
     const connectSSE = () => {
       if (sseClient) return;
 
-      const sessionId = getSessionId();
       logMessage(`Connecting to SSE for session: ${sessionId}`, '#6366f1');
 
       sseClient = createSSEClient({
@@ -160,21 +160,35 @@
       if (feedbackForm) {
         feedbackForm.destroy();
       }
-      if (messageDisplay) {
-        messageDisplay.destroy();
+      if (conversationHistory) {
+        conversationHistory.destroy();
       }
 
-      // Create message display first (shows above form)
-      messageDisplay = createMessageDisplay({
+      // Create conversation history first (shows above form)
+      conversationHistory = createConversationHistory({
         container: panel.body,
+        sessionId,
       });
+
+      // Check if we have existing messages (indicates returning user)
+      if (conversationHistory.hasMessages()) {
+        logMessage(`Restored ${conversationHistory.getMessageCount()} messages from history`, '#6366f1');
+        hasSentFeedback = true;
+        connectSSE();
+      }
 
       feedbackForm = createFeedbackForm({
         container: panel.body,
         endpoint: getEndpoint(),
         apiKey: getApiKey(),
-        onSuccess: (conversationId) => {
+        onSuccess: (conversationId, submittedText, screenshotUrl) => {
           logMessage(`Feedback sent! Conversation ID: ${conversationId}`, 'green');
+
+          // Add user message to conversation history
+          if (conversationHistory) {
+            conversationHistory.addUserMessage(submittedText, screenshotUrl);
+            logMessage(`Added user message to history: "${submittedText.substring(0, 30)}..."`, '#6366f1');
+          }
 
           // Connect to SSE after first feedback sent
           if (!hasSentFeedback) {
@@ -227,6 +241,7 @@
     window.heydevButton = button;
     window.heydevPanel = panel;
     window.heydevGetForm = () => feedbackForm;
+    window.heydevGetHistory = () => conversationHistory;
     window.heydevSSE = () => sseClient;
   </script>
 </body>

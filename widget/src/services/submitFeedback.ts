@@ -39,8 +39,8 @@ export interface SubmitFeedbackOptions {
   apiKey: string;
   /** Callback when submission starts */
   onStart?: () => void;
-  /** Callback when submission succeeds */
-  onSuccess?: (conversationId: string) => void;
+  /** Callback when submission succeeds (includes screenshot URL if uploaded) */
+  onSuccess?: (conversationId: string, screenshotUrl?: string) => void;
   /** Callback when submission fails */
   onError?: (error: string) => void;
 }
@@ -181,9 +181,9 @@ export async function submitFeedback(
       sessionId
     );
 
-    // Signal success
+    // Signal success (include screenshot URL if uploaded)
     if (onSuccess) {
-      onSuccess(conversationId);
+      onSuccess(conversationId, screenshotUrl ?? undefined);
     }
 
     return {

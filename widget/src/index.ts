@@ -41,6 +41,12 @@ export {
   type MessageDisplayOptions,
   type MessageDisplayInstance,
 } from './components/MessageDisplay';
+export {
+  createConversationHistory,
+  type ConversationHistoryOptions,
+  type ConversationHistoryInstance,
+  type HistoryMessage,
+} from './components/ConversationHistory';
 
 // Service exports
 export {

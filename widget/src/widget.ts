@@ -7,7 +7,7 @@
 import { createFloatingButton, type FloatingButtonInstance } from './components/FloatingButton';
 import { createFeedbackPanel, type FeedbackPanelInstance } from './components/FeedbackPanel';
 import { createFeedbackForm, type FeedbackFormInstance } from './components/FeedbackForm';
-import { createMessageDisplay, type MessageDisplayInstance } from './components/MessageDisplay';
+import { createConversationHistory, type ConversationHistoryInstance } from './components/ConversationHistory';
 import { createSSEClient, type SSEClientInstance, type SSEMessage } from './services/sseClient';
 import { installErrorInterceptor } from './utils/consoleErrors';
 import { getSessionId } from './utils/session';
@@ -136,13 +136,15 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
 
   // Create components
   let form: FeedbackFormInstance | null = null;
-  let messageDisplay: MessageDisplayInstance | null = null;
+  let conversationHistory: ConversationHistoryInstance | null = null;
   let sseClient: SSEClientInstance | null = null;
 
   // Track unread messages when panel is closed
   let unreadCount = 0;
   // Track if we've sent feedback (to know when to connect SSE)
   let hasSentFeedback = false;
+  // Get session ID once for consistent use
+  const sessionId = getSessionId();
 
   // Create floating button
   const button: FloatingButtonInstance = createFloatingButton({ container });
@@ -154,9 +156,9 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
    * Handle incoming SSE message
    */
   const handleSSEMessage = (message: SSEMessage) => {
-    // Add message to display if it exists
-    if (messageDisplay) {
-      messageDisplay.addDeveloperMessage(message);
+    // Add message to conversation history if it exists
+    if (conversationHistory) {
+      conversationHistory.addDeveloperMessage(message.text, message.timestamp, message.messageId);
     }
 
     // If panel is closed, increment unread count and show badge
@@ -172,7 +174,6 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
   const connectSSE = () => {
     if (sseClient) return; // Already connected
 
-    const sessionId = getSessionId();
     sseClient = createSSEClient({
       endpoint: config.endpoint,
       sessionId,
@@ -194,20 +195,32 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
     if (form) {
       form.destroy();
     }
-    if (messageDisplay) {
-      messageDisplay.destroy();
+    if (conversationHistory) {
+      conversationHistory.destroy();
     }
 
-    // Create message display first (shows above form)
-    messageDisplay = createMessageDisplay({
+    // Create conversation history first (shows above form)
+    conversationHistory = createConversationHistory({
       container: panel.body,
+      sessionId,
     });
+
+    // Check if we have existing messages (indicates returning user)
+    if (conversationHistory.hasMessages()) {
+      hasSentFeedback = true;
+      connectSSE();
+    }
 
     form = createFeedbackForm({
       container: panel.body,
       endpoint: config.endpoint,
       apiKey: config.apiKey,
-      onSuccess: (conversationId) => {
+      onSuccess: (conversationId, submittedText, screenshotUrl) => {
+        // Add user message to conversation history
+        if (conversationHistory) {
+          conversationHistory.addUserMessage(submittedText, screenshotUrl);
+        }
+
         // Form handles success message and auto-close
         console.log('[HeyDev] Feedback sent, conversation:', conversationId);
 
@@ -258,8 +271,8 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
         sseClient = null;
       }
 
-      if (messageDisplay) {
-        messageDisplay.destroy();
+      if (conversationHistory) {
+        conversationHistory.destroy();
       }
       if (form) {
         form.destroy();

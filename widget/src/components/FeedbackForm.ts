@@ -103,8 +103,8 @@ export interface FeedbackFormOptions {
   endpoint: string;
   /** API key for authentication */
   apiKey: string;
-  /** Callback when feedback is successfully submitted */
-  onSuccess?: (conversationId: string) => void;
+  /** Callback when feedback is successfully submitted (includes submitted text and screenshot URL) */
+  onSuccess?: (conversationId: string, submittedText: string, screenshotUrl?: string) => void;
   /** Callback when submission fails */
   onError?: (error: string) => void;
   /** Callback to close the panel */
@@ -200,6 +200,9 @@ export function createFeedbackForm(
     isSubmitting = true;
     clearStatus();
 
+    // Capture the text before clearing (for conversation history)
+    const submittedText = text.trim();
+
     // Get submit button and show loading state
     const submitBtn = textInput.submitButton;
     submitBtn.classList.add('is-loading');
@@ -217,16 +220,16 @@ export function createFeedbackForm(
       onStart: () => {
         // Already handled above
       },
-      onSuccess: (conversationId) => {
+      onSuccess: (conversationId, screenshotUrl) => {
         showStatus('Feedback sent!', 'success');
 
         // Clear form
         textInput.clear();
         screenshotBtn.clearScreenshot();
 
-        // Notify parent
+        // Notify parent with submitted text and screenshot URL
         if (onSuccess) {
-          onSuccess(conversationId);
+          onSuccess(conversationId, submittedText, screenshotUrl);
         }
 
         // Close panel after 2 seconds

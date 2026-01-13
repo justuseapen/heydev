@@ -30,8 +30,8 @@ Branch: ralph/heydev-feedback-widget
 | US-022 | Webhook retry logic | complete |
 | US-023 | Webhook reply endpoint | complete |
 | US-024 | SSE endpoint for real-time replies | complete |
-| US-025 | Widget SSE connection for replies | pending |
-| US-026 | Conversation history in widget | pending |
+| US-025 | Widget SSE connection for replies | complete |
+| US-026 | Conversation history in widget | complete |
 | US-027 | User follow-up replies | pending |
 | US-028 | Dashboard project setup | pending |
 | US-029 | Dashboard magic link authentication | pending |
@@ -618,5 +618,61 @@ Branch: ralph/heydev-feedback-widget
   - SSE routes should be mounted outside API key protected routes (widget has no API key)
   - Set EventEmitter.setMaxListeners(1000) for many concurrent connections
   - SSE data must be JSON.stringify()'d for complex objects
+
+---
+
+## 2026-01-12 - US-025: Widget SSE connection for replies
+- What was implemented:
+  - SSE client service (widget/src/services/sseClient.ts) using native EventSource API
+  - MessageDisplay component for showing developer replies with 'Developer' label and timestamp
+  - Notification badge on FloatingButton with unread count, animated pop effect
+  - SSE integration in widget.ts - connects after first feedback submitted
+  - Badge clears when panel opens, increments when replies arrive while panel is closed
+  - Automatic reconnection with exponential backoff (1s base, 30s max, 10 attempts)
+  - Updated test page (index.html) to demonstrate SSE functionality with logging
+- Files changed:
+  - widget/src/services/sseClient.ts (new SSE client with EventSource and reconnection)
+  - widget/src/components/MessageDisplay.ts (new component for developer messages)
+  - widget/src/components/FloatingButton.ts (added badge support with showBadge/hideBadge)
+  - widget/src/index.ts (exported new components and SSE service)
+  - widget/src/widget.ts (integrated SSE client and message display)
+  - widget/index.html (updated test page to use SSE)
+- **Learnings for future iterations:**
+  - EventSource API handles reconnection automatically but we added manual control for better UX
+  - Badge element should be positioned absolute relative to button container
+  - MessageDisplay uses aria-live="polite" for screen reader accessibility
+  - When panel reopens, MessageDisplay is recreated fresh (history preserved in US-026)
+  - Test SSE messages via: curl -X POST http://localhost:3000/api/webhook/reply -H "Content-Type: application/json" -H "X-API-Key: test-api-key-12345" -d '{"session_id": "sess_xxx", "message": "test"}'
+
+---
+
+## 2026-01-13 - US-026: Conversation history in widget
+- What was implemented:
+  - ConversationHistory component (widget/src/components/ConversationHistory.ts) with full history display
+  - User messages styled right-aligned with purple background
+  - Developer messages styled left-aligned with gray background
+  - Timestamps shown on each message with localized formatting
+  - Scrollable message area with smooth scroll behavior
+  - SessionStorage persistence using session ID as key
+  - Auto-restore history when panel reopens
+  - FeedbackForm callback updated to include submitted text and screenshot URL
+  - Widget.ts integrated to add user messages to history after successful submission
+  - Test page (index.html) updated to use new ConversationHistory component
+- Files changed:
+  - widget/src/components/ConversationHistory.ts (new conversation history component)
+  - widget/src/components/FeedbackForm.ts (updated onSuccess callback signature)
+  - widget/src/services/submitFeedback.ts (pass screenshot URL to onSuccess)
+  - widget/src/widget.ts (replaced MessageDisplay with ConversationHistory)
+  - widget/src/index.ts (exported new component and types)
+  - widget/index.html (updated test page with new component)
+- **Learnings for future iterations:**
+  - Use sessionStorage with unique key per session (STORAGE_KEY_PREFIX + sessionId)
+  - HistoryMessage type includes: id, direction ('user'|'developer'), text, timestamp, screenshotUrl
+  - Messages are rendered chronologically with oldest first
+  - Style user messages with align-self: flex-end, developer with flex-start
+  - generateMessageId() creates unique IDs: msg_{timestamp}_{random}
+  - Developer messages use server messageId for deduplication (dev_{messageId})
+  - Container uses :empty pseudo-class to hide when no messages
+  - FeedbackForm onSuccess callback now: (conversationId, submittedText, screenshotUrl?) => void
 
 ---
