@@ -11,8 +11,12 @@ import { apiKeyAuth } from './middleware/apiKey.js';
 import { uploadRoutes } from './routes/upload.js';
 import { transcribeRoutes } from './routes/transcribe.js';
 import { feedbackRoutes } from './routes/feedback.js';
+import { registerWebhookSender } from './services/webhookSender.js';
 
 export const VERSION = '0.1.0';
+
+// Register notification channel senders
+registerWebhookSender();
 
 const app = new Hono();
 

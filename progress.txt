@@ -1,0 +1,556 @@
+# HeyDev Progress Log
+
+Branch: ralph/heydev-feedback-widget
+
+## Stories
+
+| ID | Title | Status |
+|----|-------|--------|
+| US-001 | Project setup with TypeScript and build tooling | complete |
+| US-002 | Database schema for API keys and channels | complete |
+| US-003 | Backend server setup with Hono | complete |
+| US-004 | API key validation middleware | complete |
+| US-005 | File upload endpoint for screenshots | complete |
+| US-006 | Transcription endpoint with Whisper fallback | complete |
+| US-007 | Feedback submission endpoint | complete |
+| US-008 | Context capture utility module | complete |
+| US-009 | Console error capture utility | complete |
+| US-010 | Session ID generation and storage | complete |
+| US-011 | Widget floating button component | complete |
+| US-012 | Widget feedback panel skeleton | complete |
+| US-013 | Text input in feedback panel | complete |
+| US-014 | Screenshot capture button | complete |
+| US-015 | Voice recording button with Web Speech API | complete |
+| US-016 | Voice recording fallback to Whisper API | complete |
+| US-017 | Submit feedback to backend | complete |
+| US-018 | Widget script entry point and initialization | complete |
+| US-019 | Widget Vite build configuration | complete |
+| US-020 | Notification channel router | complete |
+| US-021 | Webhook notification sender | complete |
+| US-022 | Webhook retry logic | pending |
+| US-023 | Webhook reply endpoint | pending |
+| US-024 | SSE endpoint for real-time replies | pending |
+| US-025 | Widget SSE connection for replies | pending |
+| US-026 | Conversation history in widget | pending |
+| US-027 | User follow-up replies | pending |
+| US-028 | Dashboard project setup | pending |
+| US-029 | Dashboard magic link authentication | pending |
+| US-030 | Dashboard API key generation | pending |
+| US-031 | Dashboard notification channel list | pending |
+| US-032 | Dashboard webhook channel configuration | pending |
+| US-033 | Dashboard email channel configuration | pending |
+| US-034 | Email notification sender | pending |
+| US-035 | Docker Compose for self-hosting | pending |
+| US-036 | Widget dark mode support | pending |
+| US-037 | Widget accessibility | pending |
+
+---
+
+## Codebase Patterns
+- Use npm workspaces for monorepo structure (widget, server, dashboard)
+- Widget components in widget/src/components/ with createXxx() factory pattern
+- Use `tsc -b` for TypeScript builds with project references
+- ESLint 9 flat config with typescript-eslint plugin
+- All workspaces extend root tsconfig.json with composite: true
+- Drizzle ORM for database with better-sqlite3 driver
+- drizzle-orm installed at root level for drizzle-kit compatibility
+- Database stored in server/data/heydev.db (gitignored, created at runtime)
+- Hono server with @hono/node-server adapter for HTTP endpoints
+- CORS enabled by default allowing all origins
+- Use `createMiddleware` from `hono/factory` for typed custom middleware
+- Extend `ContextVariableMap` in `declare module 'hono'` for custom context variables
+- Protected routes pattern: create new Hono instance, apply middleware, mount with `app.route('/api', api)`
+- Widget build: Vite library mode with IIFE format, `npm run build` in widget/ outputs dist/widget.js
+- Heavy dependencies (html2canvas): load from CDN at runtime to keep bundle small
+
+---
+
+## Iteration Log
+
+## 2026-01-12 - US-001
+- What was implemented:
+  - Initialized npm monorepo with workspaces for widget, server, dashboard
+  - Configured TypeScript 5.4 with strict mode and project references
+  - Set up ESLint 9 with typescript-eslint flat config
+  - Added Prettier with sensible defaults
+  - Created placeholder entry points for each workspace
+- Files changed:
+  - package.json (root)
+  - tsconfig.json (root + 3 workspaces)
+  - eslint.config.js
+  - .prettierrc, .prettierignore, .gitignore
+  - widget/package.json, server/package.json, dashboard/package.json
+  - widget/src/index.ts, server/src/index.ts, dashboard/src/index.tsx
+- **Learnings for future iterations:**
+  - Root tsconfig.json uses `files: []` with `references` array for project references
+  - Each workspace needs `composite: true` in its tsconfig
+  - Use `tsc -b` (build mode) instead of `tsc --noEmit` for project references
+  - ESLint 9 requires flat config format, not .eslintrc
+
+---
+
+## 2026-01-12 - US-002
+- What was implemented:
+  - SQLite database with Drizzle ORM (better-sqlite3)
+  - api_keys table (id, key, created_at, user_id)
+  - channels table with type enum (slack/email/sms/webhook), config JSON, enabled/verified boolean
+  - conversations table (id, api_key_id, session_id, created_at)
+  - messages table with direction enum (inbound/outbound)
+  - Drizzle Kit configuration for migrations (drizzle.config.js)
+  - Migration scripts: db:generate, db:migrate, db:push, db:studio
+- Files changed:
+  - server/src/db/schema.ts (schema definitions with TypeScript types)
+  - server/src/db/index.ts (database connection with auto-directory creation)
+  - server/drizzle.config.js (Drizzle Kit config)
+  - server/drizzle/0000_abandoned_proteus.sql (initial migration)
+  - server/package.json (added drizzle dependencies and scripts)
+  - .gitignore (added server/data/ for SQLite database)
+- **Learnings for future iterations:**
+  - drizzle-orm must be installed at root level in npm workspaces for drizzle-kit to work
+  - Use drizzle.config.js (JS) instead of .ts for simpler config loading
+  - SQLite uses `text` columns with `enum` option for enum-like behavior
+  - Use `$defaultFn` for dynamic defaults like `new Date().toISOString()`
+  - Database directory is created at runtime (server/data/) - not checked into git
+
+---
+
+## 2026-01-12 - US-003
+- What was implemented:
+  - Hono server configured in /server with Node.js adapter
+  - CORS middleware allowing all origins via `cors()` middleware
+  - Health check endpoint GET /health returns {status: 'ok'}
+  - Server runs on configurable port via PORT env var (default 3000)
+- Files changed:
+  - server/src/index.ts (Hono server setup with CORS and health endpoint)
+  - server/package.json (added hono and @hono/node-server dependencies)
+  - package-lock.json (updated with new dependencies)
+- **Learnings for future iterations:**
+  - Use `@hono/node-server` adapter for running Hono in Node.js
+  - Hono's `cors()` middleware from `hono/cors` allows all origins by default
+  - Export the `app` instance for use by other modules (middleware, routes)
+
+---
+
+## 2026-01-12 - US-004
+- What was implemented:
+  - API key validation middleware using Hono's createMiddleware
+  - Extracts API key from X-API-Key header or api_key query parameter
+  - Validates key against database using Drizzle ORM eq() query
+  - Returns 401 with error message if missing or invalid
+  - Attaches full ApiKey record to Hono context via c.set('apiKey', record)
+  - TypeScript module augmentation for typed context access
+  - Protected route pattern: separate Hono instance mounted under /api
+  - Example /api/me endpoint demonstrating middleware usage
+- Files changed:
+  - server/src/middleware/apiKey.ts (new middleware file)
+  - server/src/index.ts (imported middleware, created protected API routes)
+- **Learnings for future iterations:**
+  - Use `createMiddleware` from `hono/factory` for typed middleware with Next function
+  - Must `return next()` (not `await next()`) to satisfy TypeScript return type
+  - Use `declare module 'hono'` with `ContextVariableMap` interface for typed context
+  - Drizzle query syntax: `db.query.tableName.findFirst({ where: eq(table.column, value) })`
+  - Pattern for protected routes: create sub-Hono, apply middleware with `use('*')`, mount with `route()`
+
+---
+
+## 2026-01-12 - US-005
+- What was implemented:
+  - File upload endpoint POST /api/upload accepting multipart/form-data
+  - Image validation for png, jpg, webp file types
+  - Image resizing to max 1200px width using sharp library
+  - Files stored in /uploads directory with UUID-based filenames
+  - JSON response with url field pointing to uploaded file
+  - Static file serving at GET /uploads/:filename using serveStatic
+- Files changed:
+  - server/src/routes/upload.ts (new upload route handler)
+  - server/src/index.ts (added upload routes and static serving)
+  - server/package.json (added sharp and uuid dependencies)
+  - package-lock.json (updated with new dependencies)
+- **Learnings for future iterations:**
+  - Use `sharp` library for image processing in Node.js (automatic format detection, resizing)
+  - Use `@hono/node-server/serve-static` for serving static files with `root: './'` to serve from cwd
+  - Hono FormData: use `c.req.formData()` and check `file instanceof File`
+  - File.arrayBuffer() returns ArrayBuffer, convert to Buffer with `Buffer.from(arrayBuffer)`
+  - Uploads directory is created at runtime if it doesn't exist
+  - Pattern for sub-routes: create new Hono instance, export it, mount with `api.route('/path', routes)`
+
+---
+
+## 2026-01-12 - US-006
+- What was implemented:
+  - POST /api/transcribe endpoint accepting audio blob (webm/opus and other formats)
+  - OpenAI Whisper API integration for server-side transcription
+  - In-memory rate limiting (10 requests/minute per session)
+  - Proper error handling for OpenAI API errors (401, 429, etc.)
+  - Periodic cleanup of old rate limit entries to prevent memory leaks
+- Files changed:
+  - server/src/routes/transcribe.ts (new transcription route handler)
+  - server/src/index.ts (imported and mounted transcribe routes)
+  - server/package.json (added openai dependency)
+  - package-lock.json (updated with new dependencies)
+- **Learnings for future iterations:**
+  - OpenAI SDK v4+ accepts native Fetch API File objects directly for audio upload
+  - Use `openai.audio.transcriptions.create()` with `model: 'whisper-1'`
+  - OpenAI SDK reads `OPENAI_API_KEY` environment variable automatically
+  - Check `error instanceof OpenAI.APIError` for typed error handling
+  - Simple in-memory rate limiting with Map works for single-instance servers
+  - Pattern for rate limiting: track windowStart timestamp and count per session
+
+---
+
+## 2026-01-12 - US-007
+- What was implemented:
+  - POST /api/feedback endpoint accepting JSON with text, screenshot_url, audio_url, context object
+  - Context validation for required fields (url, browser, os, viewport, timestamp, timezone)
+  - Creates or retrieves conversation by session_id (using apiKeyId + sessionId compound lookup)
+  - Stores message in messages table with direction 'inbound'
+  - Message content stored as JSON string including text, screenshot_url, audio_url, and full context
+  - Returns JSON with conversation_id
+- Files changed:
+  - server/src/routes/feedback.ts (new feedback route handler)
+  - server/src/index.ts (imported and mounted feedback routes)
+- **Learnings for future iterations:**
+  - Use `and()` from drizzle-orm for compound WHERE clauses: `and(eq(col1, val1), eq(col2, val2))`
+  - Drizzle's `.returning()` method returns array of inserted records
+  - Pattern for "find or create": first query with findFirst, then insert if null
+  - Store structured data as JSON string in content field for flexibility
+
+---
+
+## 2026-01-12 - US-008
+- What was implemented:
+  - Context capture utility module in widget/src/utils/context.ts
+  - captureContext() function returns PageContext object
+  - Browser parsing from userAgent (Edge, Opera, Chrome, Safari, Firefox)
+  - OS parsing from userAgent (iOS, Android, Windows, macOS, Linux, Chrome OS)
+  - Viewport captured from window.innerWidth/innerHeight
+  - Timestamp in ISO 8601 format using new Date().toISOString()
+  - Timezone name from Intl.DateTimeFormat().resolvedOptions().timeZone
+- Files changed:
+  - widget/src/utils/context.ts (new context capture module)
+  - widget/src/index.ts (exported captureContext and PageContext type)
+- **Learnings for future iterations:**
+  - Widget utilities go in widget/src/utils/ directory
+  - Export types with `export { type TypeName }` syntax for type-only exports
+  - Browser detection order matters: check specific variants (Edge) before generic (Chrome)
+  - Intl.DateTimeFormat().resolvedOptions().timeZone gives the timezone name (e.g., "America/New_York")
+
+---
+
+## 2026-01-12 - US-009
+- What was implemented:
+  - Console error capture utility in widget/src/utils/consoleErrors.ts
+  - installErrorInterceptor() function to replace console.error with interceptor
+  - uninstallErrorInterceptor() to restore original behavior
+  - getConsoleErrors() returns array of captured errors (up to 5, within last 5 minutes)
+  - clearCapturedErrors() for testing/reset
+  - Errors stored with message and ISO timestamp
+  - Old errors (>5 minutes) pruned automatically on capture or retrieval
+  - Original console.error behavior preserved (calls original after capturing)
+- Files changed:
+  - widget/src/utils/consoleErrors.ts (new console error capture module)
+  - widget/src/index.ts (exported new functions and CapturedError type)
+  - server/src/routes/feedback.ts (fixed lint error - Array<T> to T[])
+- **Learnings for future iterations:**
+  - Intercept browser APIs by storing original, replacing with wrapper, calling original inside wrapper
+  - Use `Function.apply(console, args)` to preserve proper `this` context when calling original
+  - Store interceptor installation state to prevent double-installation
+  - Pruning strategy: prune on both capture and retrieval to keep memory bounded
+
+---
+
+## 2026-01-12 - US-010
+- What was implemented:
+  - Session ID generation and storage utility in widget/src/utils/session.ts
+  - getSessionId() function returns existing or creates new session ID
+  - Session ID stored in sessionStorage (not cookies) for browser session persistence
+  - Session ID format: 'sess_' + 16 random alphanumeric chars
+  - Uses crypto.getRandomValues() for secure random generation
+  - clearSessionId() function for testing/logout scenarios
+  - In-memory fallback when sessionStorage is unavailable
+- Files changed:
+  - widget/src/utils/session.ts (new session ID module)
+  - widget/src/index.ts (exported getSessionId and clearSessionId)
+- **Learnings for future iterations:**
+  - Use crypto.getRandomValues() for secure random generation in browsers
+  - sessionStorage persists only for the browser session (tab/window lifetime)
+  - Always provide fallback when browser APIs might be unavailable (private mode, etc.)
+  - Test sessionStorage availability with try/catch around actual set/get operations
+
+---
+
+
+## 2026-01-12 - US-011
+- What was implemented:
+  - Floating feedback button component in widget/src/components/FloatingButton.ts
+  - Circular 56px button fixed to bottom-right corner (24px from edges)
+  - Chat/feedback SVG icon inline
+  - Subtle box-shadow with hover state (scale 1.05)
+  - Entrance animation (fade + slide up from 16px)
+  - Dispatches 'heydev:open' custom event on click
+  - CSS custom properties for theming (--heydev-primary defaults to #6366f1)
+  - ARIA label for accessibility
+  - Respects prefers-reduced-motion media query
+  - Test page with Vite dev server for browser verification
+- Files changed:
+  - widget/src/components/FloatingButton.ts (new component)
+  - widget/src/index.ts (exported new component)
+  - widget/index.html (test page for development)
+  - widget/vite.config.ts (Vite config for dev server)
+- **Learnings for future iterations:**
+  - Widget components go in widget/src/components/ directory
+  - Use createXxx() factory function pattern returning instance with control methods
+  - Inject styles dynamically with unique ID to prevent duplicates
+  - Use CSS custom properties (--heydev-*) for theming
+  - Always include ARIA labels for accessibility
+  - Test with `npm run dev` in widget/ directory at http://localhost:5173/
+  - Custom events need `bubbles: true, composed: true` for Shadow DOM compatibility
+
+---
+
+## 2026-01-12 - US-012
+- What was implemented:
+  - Feedback panel component in widget/src/components/FeedbackPanel.ts
+  - Panel 360px wide, 480px max height, positioned 96px from bottom (above button)
+  - Header with 'Send Feedback' title and close (X) button with hover states
+  - Slide-up animation on open, slide-down animation on close (opacity + translateY)
+  - Overlay element for click-outside-to-close functionality
+  - Opens on 'heydev:open' event, closes on 'heydev:close' event or X click
+  - Escape key closes panel
+  - CSS custom properties for theming (--heydev-panel-bg, --heydev-border, etc.)
+  - ARIA attributes for accessibility (role="dialog", aria-label, aria-modal)
+  - Respects prefers-reduced-motion media query
+- Files changed:
+  - widget/src/components/FeedbackPanel.ts (new component)
+  - widget/src/index.ts (exported new component)
+  - widget/index.html (updated test page to include panel)
+- **Learnings for future iterations:**
+  - Use overlay element (position: fixed, inset: 0) for click-outside detection
+  - Panel uses pointer-events: none when closed, pointer-events: auto when open
+  - Focus close button after panel opens for accessibility
+  - Panel components expose body element for adding content in future stories
+
+---
+
+## 2026-01-12 - US-013
+- What was implemented:
+  - Text input component in widget/src/components/TextInput.ts
+  - Textarea with placeholder "What's on your mind?"
+  - Auto-resizing textarea up to 150px max height using scrollHeight
+  - Submit button with send icon, disabled when textarea is empty
+  - Cmd/Ctrl+Enter keyboard shortcut to submit
+  - CSS custom properties for theming (--heydev-input-bg, --heydev-primary-hover)
+  - ARIA labels for accessibility
+  - Respects prefers-reduced-motion media query
+- Files changed:
+  - widget/src/components/TextInput.ts (new component)
+  - widget/src/index.ts (exported new component)
+  - widget/index.html (updated test page to integrate TextInput into panel)
+- **Learnings for future iterations:**
+  - Auto-resize textarea: set height to 'auto', then set to scrollHeight (capped at max)
+  - Use box-sizing: border-box on textarea to include padding in width calculation
+  - Keyboard shortcuts: listen for `metaKey` (Mac Cmd) or `ctrlKey` (Windows/Linux Ctrl)
+  - Components receive onSubmit callback in options for parent to handle submission
+  - TextInput exposes getValue(), setValue(), clear(), focus() for programmatic control
+
+---
+
+## 2026-01-12 - US-014
+- What was implemented:
+  - Screenshot capture button component in widget/src/components/ScreenshotButton.ts
+  - Camera icon button displayed next to textarea in feedback panel
+  - Uses html2canvas library to capture visible viewport
+  - Loading spinner animation while capturing (rotating icon)
+  - 80px thumbnail preview displayed below text area after capture
+  - Red X button on thumbnail to remove screenshot
+  - Only one screenshot allowed at a time (button disabled after capture)
+  - CSS custom properties for theming (--heydev-btn-secondary-bg, --heydev-danger, etc.)
+  - ARIA labels for accessibility
+  - Respects prefers-reduced-motion media query
+- Files changed:
+  - widget/src/components/ScreenshotButton.ts (new component)
+  - widget/src/index.ts (exported new component)
+  - widget/index.html (updated test page to integrate ScreenshotButton)
+  - widget/package.json (added html2canvas dependency)
+  - package-lock.json (updated with new dependencies)
+- **Learnings for future iterations:**
+  - html2canvas options: use scale:1, useCORS:true, logging:false for viewport capture
+  - Capture viewport with x:scrollX, y:scrollY, width:innerWidth, height:innerHeight
+  - ScreenshotButton exposes hasScreenshot(), getScreenshot(), clearScreenshot() for integration
+  - Use separate container and previewContainer options to place preview in different location
+  - onCapture callback receives data URL, onRemove callback for cleanup
+
+---
+
+## 2026-01-12 - US-015
+- What was implemented:
+  - Voice recording button component in widget/src/components/VoiceButton.ts
+  - Microphone button prominently displayed next to screenshot button in feedback panel
+  - Uses Web Speech API (SpeechRecognition) for real-time transcription
+  - Visual indicator (pulsing red dot) when recording via CSS animation
+  - Transcribed text updates textarea in real-time as user speaks
+  - Toggle recording by clicking button again
+  - 60-second maximum recording duration with automatic stop
+  - Shows 'Voice not supported' message if browser lacks Web Speech API
+  - Full TypeScript type definitions for SpeechRecognition API
+  - CSS custom properties for theming (--heydev-danger, --heydev-btn-secondary-bg)
+  - ARIA labels for accessibility
+  - Respects prefers-reduced-motion media query
+- Files changed:
+  - widget/src/components/VoiceButton.ts (new voice button component)
+  - widget/src/index.ts (exported new component and types)
+  - widget/index.html (integrated voice button into test page)
+- **Learnings for future iterations:**
+  - Web Speech API types not built into TypeScript - need custom interface declarations
+  - Use `type = new () => T` syntax instead of interface with call signature for constructors (ESLint rule)
+  - SpeechRecognition accessed via window.SpeechRecognition or window.webkitSpeechRecognition
+  - recognition.continuous = true for continuous listening, interimResults = true for real-time feedback
+  - recognition.onresult event has resultIndex and results array with isFinal flag per result
+  - VoiceButton exposes isSupported(), isRecording(), startRecording(), stopRecording(), toggleRecording()
+  - Headless browsers (Playwright Chromium) don't support Web Speech API - test in real browser for full functionality
+
+---
+
+## 2026-01-12 - US-016
+- What was implemented:
+  - MediaRecorder + Whisper API fallback when Web Speech API is unavailable
+  - isMediaRecorderSupported() check for fallback availability
+  - Uses navigator.mediaDevices.getUserMedia() to capture audio
+  - MediaRecorder captures audio in webm/opus format (with fallback to webm or mp4)
+  - Audio chunks collected and uploaded to /api/transcribe endpoint on stop
+  - Loading spinner with spinning animation during transcription
+  - New CSS class .is-transcribing with primary color background
+  - New options: transcribeEndpoint, getSessionId, onTranscribingStart, onTranscribingEnd
+  - New instance methods: isFallbackMode(), isTranscribing()
+  - Test page updated with fallback configuration
+- Files changed:
+  - widget/src/components/VoiceButton.ts (extended with fallback mode)
+  - widget/index.html (added transcribeEndpoint and getSessionId options)
+- **Learnings for future iterations:**
+  - MediaRecorder.isTypeSupported() to detect best audio format
+  - navigator.mediaDevices.getUserMedia() returns Promise, needs async handling
+  - MediaRecorder.ondataavailable fires when data is ready (use start(timeslice) for periodic events)
+  - MediaRecorder.onstop is async-friendly - can await transcription inside
+  - DOMException with name 'NotAllowedError' indicates microphone access denied
+  - Must stop MediaStream tracks to release microphone after recording
+  - Two-mode pattern: check native support first, then fallback support, then unsupported
+
+---
+
+## 2026-01-12 - US-017
+- What was implemented:
+  - submitFeedback service in widget/src/services/submitFeedback.ts
+  - Handles complete submission flow: context capture, screenshot upload, feedback POST
+  - FeedbackForm component in widget/src/components/FeedbackForm.ts
+  - Integrates TextInput, ScreenshotButton, VoiceButton into cohesive form
+  - Loading spinner on submit button during submission
+  - Success message ("Feedback sent!") with auto-close after 2 seconds
+  - Error handling with user-friendly error display
+  - Context capture includes console errors captured by error interceptor
+  - Lazy OpenAI client initialization to prevent server crash without API key
+  - Updated test page to use new FeedbackForm component with config inputs
+- Files changed:
+  - widget/src/services/submitFeedback.ts (new submission service)
+  - widget/src/components/FeedbackForm.ts (new integrated form component)
+  - widget/src/index.ts (exported new components and services)
+  - widget/index.html (updated to use FeedbackForm with endpoint/apiKey config)
+  - server/src/routes/transcribe.ts (lazy OpenAI initialization)
+- **Learnings for future iterations:**
+  - Use services directory for API-related functionality (widget/src/services/)
+  - dataUrlToBlob() converts base64 data URLs to Blob for FormData upload
+  - Lazy initialization pattern: check env var at runtime instead of module load time
+  - Form components should receive endpoint/apiKey config for flexibility
+  - CSS class toggling pattern: submitBtn.classList.add('is-loading') for loading states
+  - Test API keys can be created with scripts/add-test-key.js using tsx
+
+---
+
+## 2026-01-12 - US-018
+- What was implemented:
+  - Widget script entry point in widget/src/widget.ts
+  - Auto-initialization from script tag with data-api-key attribute
+  - Optional data-endpoint attribute for custom backend URL (default: https://api.heydev.io)
+  - Shadow DOM container for complete style isolation from host page
+  - Floating button and feedback panel rendered inside shadow root
+  - Public window.HeyDev API with open(), close(), isOpen(), destroy() methods
+  - Test page widget-test.html demonstrating script tag usage
+- Files changed:
+  - widget/src/widget.ts (widget entry point)
+  - widget/widget-test.html (test page for script tag integration)
+- **Learnings for future iterations:**
+  - Shadow DOM creates isolated style boundary - use attachShadow({ mode: 'open' })
+  - Style reset with `:host { all: initial; }` prevents host page styles leaking in
+  - Events need `composed: true` to cross shadow DOM boundary
+  - Use `document.querySelectorAll('script[data-api-key]')` to find widget script tag
+  - Listen for heydev:open event on shadow container, not document, for Shadow DOM events
+  - Test widget initialization with setTimeout in test pages (widget loads async)
+
+---
+
+## 2026-01-12 - US-019
+- What was implemented:
+  - Vite library mode configuration for widget bundling
+  - Single widget.js output file (33KB raw, 9.5KB gzipped) with CSS inlined
+  - IIFE format for direct script tag inclusion
+  - Source maps generated for debugging (widget.js.map)
+  - html2canvas loaded from CDN at runtime to reduce bundle size
+  - Added unpkg/jsdelivr fields to package.json for CDN distribution
+- Files changed:
+  - widget/vite.config.ts (library mode configuration with IIFE output)
+  - widget/package.json (moved html2canvas to devDeps, added CDN fields)
+  - widget/src/components/ScreenshotButton.ts (dynamic CDN loading for html2canvas)
+  - package-lock.json (updated dependencies)
+- **Learnings for future iterations:**
+  - Use `build.lib` for library mode output with `formats: ['iife']` for script tag usage
+  - Use `external` to exclude heavy dependencies and load from CDN at runtime
+  - Dynamic script loading pattern: create script element, set src, listen for onload/onerror
+  - `esbuild` minifier is built into Vite - no need to install `terser` separately
+  - Bundle size optimization: CDN loading of optional dependencies keeps core bundle small
+  - IIFE format wraps bundle as `var HeyDev=function(A){...}({})` for global scope exposure
+
+---
+
+## 2026-01-12 - US-020
+- What was implemented:
+  - Notification channel router service in server/src/services/channelRouter.ts
+  - routeToChannels() function fetches all enabled channels for an API key
+  - Channel sender registry for pluggable sender implementations per channel type
+  - Concurrent channel delivery using Promise.all()
+  - DeliverySummary response with totalChannels, successful, failed counts
+  - ChannelResult type for individual channel delivery status
+  - Helper functions: registerChannelSender(), hasSender(), getRegisteredChannelTypes()
+  - Fixed pre-existing lint errors in widget code
+- Files changed:
+  - server/src/services/channelRouter.ts (new channel router service)
+  - widget/src/components/ScreenshotButton.ts (lint fix: import type at module level)
+  - widget/src/widget.ts (lint fix: use const instead of let)
+- **Learnings for future iterations:**
+  - Server services go in server/src/services/ directory
+  - Use registry pattern for extensible sender functions per channel type
+  - Drizzle query for multiple rows: `db.query.tableName.findMany({ where: ... })`
+  - Promise.all() for concurrent async operations with error handling per item
+  - ESLint rule @typescript-eslint/consistent-type-imports forbids inline `typeof import('x')` - use module-level import type instead
+
+---
+
+## 2026-01-12 - US-021
+- What was implemented:
+  - Webhook notification sender in server/src/services/webhookSender.ts
+  - POST request to configured webhook URL with documented payload schema
+  - Payload structure: { event: 'feedback.received', feedback, context, session_id, timestamp }
+  - HMAC-SHA256 signature in X-HeyDev-Signature header when secret is configured
+  - Custom headers from channel.config.headers merged into request
+  - 5 second timeout using AbortController
+  - Returns ChannelResult with success/failure and statusCode
+  - Registered webhook sender in server entry point for automatic initialization
+- Files changed:
+  - server/src/services/webhookSender.ts (new webhook sender service)
+  - server/src/index.ts (imported and registered webhook sender on startup)
+- **Learnings for future iterations:**
+  - Use Node.js `crypto.createHmac('sha256', secret)` for HMAC-SHA256 signatures
+  - AbortController with setTimeout for request timeouts in Node.js fetch
+  - Check `error.name === 'AbortError'` to detect timeout vs network errors
+  - WebhookConfig interface: { url: string, secret?: string, headers?: Record<string, string> }
+  - Register senders at server startup to ensure they're available when feedback routes trigger
+
+---
