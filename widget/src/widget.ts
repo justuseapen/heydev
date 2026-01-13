@@ -132,15 +132,13 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
   const container = shadow.querySelector('.heydev-container') as HTMLElement;
 
   // Create components
-  let button: FloatingButtonInstance;
-  let panel: FeedbackPanelInstance;
   let form: FeedbackFormInstance | null = null;
 
   // Create floating button
-  button = createFloatingButton({ container });
+  const button: FloatingButtonInstance = createFloatingButton({ container });
 
   // Create feedback panel
-  panel = createFeedbackPanel({ container });
+  const panel: FeedbackPanelInstance = createFeedbackPanel({ container });
 
   // Create form when panel opens
   const createForm = () => {

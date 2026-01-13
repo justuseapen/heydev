@@ -4,7 +4,10 @@
  * Uses dynamic import to reduce initial bundle size
  */
 
+import type html2canvasModule from 'html2canvas';
+
 // html2canvas is dynamically imported when needed
+type Html2CanvasType = typeof html2canvasModule;
 
 /** CSS styles for the screenshot button and preview */
 const SCREENSHOT_STYLES = `
@@ -247,7 +250,7 @@ export function createScreenshotButton(
     try {
       // Load html2canvas from CDN if not already loaded
       // This keeps the bundle small while still providing screenshot functionality
-      let html2canvas = (window as unknown as { html2canvas?: typeof import('html2canvas').default }).html2canvas;
+      let html2canvas = (window as unknown as { html2canvas?: Html2CanvasType }).html2canvas;
 
       if (!html2canvas) {
         // Load html2canvas from CDN
@@ -258,7 +261,7 @@ export function createScreenshotButton(
           script.onerror = () => reject(new Error('Failed to load html2canvas'));
           document.head.appendChild(script);
         });
-        html2canvas = (window as unknown as { html2canvas?: typeof import('html2canvas').default }).html2canvas;
+        html2canvas = (window as unknown as { html2canvas?: Html2CanvasType }).html2canvas;
 
         if (!html2canvas) {
           throw new Error('html2canvas failed to initialize');
