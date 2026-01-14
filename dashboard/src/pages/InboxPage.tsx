@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FeedbackList } from '../components/FeedbackList';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -73,10 +74,8 @@ export function InboxPage() {
         </nav>
       </div>
 
-      {/* Content placeholder - FeedbackList will be added in US-016 */}
-      <div className="text-center py-12 text-gray-500">
-        No feedback yet. When users submit feedback, it will appear here.
-      </div>
+      {/* Feedback list */}
+      <FeedbackList archived={tab === 'archived'} />
     </div>
   );
 }
