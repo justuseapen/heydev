@@ -210,6 +210,26 @@ export function LandingPage() {
           )}
         </div>
       </section>
+
+      {/* Footer */}
+      <footer className="py-8 px-4 border-t border-gray-200">
+        <div className="max-w-4xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4 text-sm text-gray-600">
+          <div>
+            &copy; {new Date().getFullYear()} HeyDev. Open source.
+          </div>
+          <div className="flex gap-6">
+            <a
+              href="https://github.com/justuseapen/heydev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-gray-900"
+            >
+              GitHub
+            </a>
+            <span>Self-host with Docker</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
