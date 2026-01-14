@@ -46,6 +46,9 @@ export function ConversationPage() {
   const [error, setError] = useState<string | null>(null);
   const [showErrors, setShowErrors] = useState(false);
   const [fullScreenImage, setFullScreenImage] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [sending, setSending] = useState(false);
+  const [sendError, setSendError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!conversationId) return;
@@ -105,6 +108,47 @@ export function ConversationPage() {
 
   const ctx = conversation.context;
   const consoleErrors = ctx?.console_errors || [];
+
+  const handleSendReply = async () => {
+    if (!replyText.trim() || !conversationId) return;
+
+    setSending(true);
+    setSendError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/feedback/${conversationId}/reply`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ message: replyText.trim() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send reply');
+      }
+
+      // Add new message to the conversation
+      const newMessage: Message = {
+        id: data.id,
+        direction: 'outbound',
+        text: data.text,
+        screenshotUrl: null,
+        audioUrl: null,
+        createdAt: data.createdAt,
+      };
+
+      setConversation((prev) =>
+        prev ? { ...prev, messages: [...prev.messages, newMessage] } : prev
+      );
+      setReplyText('');
+    } catch (err) {
+      setSendError(err instanceof Error ? err.message : 'Failed to send reply');
+    } finally {
+      setSending(false);
+    }
+  };
 
   return (
     <div>
@@ -218,6 +262,29 @@ export function ConversationPage() {
             </div>
           );
         })}
+      </div>
+
+      {/* Reply composer */}
+      <div className="mt-6 border-t border-gray-200 pt-6">
+        <textarea
+          value={replyText}
+          onChange={(e) => setReplyText(e.target.value)}
+          placeholder="Type your reply..."
+          rows={3}
+          className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900 resize-none"
+        />
+        {sendError && (
+          <div className="text-red-600 text-sm mt-2">{sendError}</div>
+        )}
+        <div className="mt-2 flex justify-end">
+          <button
+            onClick={handleSendReply}
+            disabled={!replyText.trim() || sending}
+            className="bg-gray-900 text-white px-6 py-2 font-medium hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+          >
+            {sending ? 'Sending...' : 'Send Reply'}
+          </button>
+        </div>
       </div>
 
       {/* Full screen image modal */}

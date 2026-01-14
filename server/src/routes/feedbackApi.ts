@@ -458,3 +458,54 @@ feedbackApiRoutes.patch('/:conversationId/unarchive', async (c) => {
     createdAt: updated.createdAt,
   });
 });
+
+/**
+ * POST /:conversationId/reply
+ * Send a reply to a conversation (creates outbound message)
+ */
+feedbackApiRoutes.post('/:conversationId/reply', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+  if (!apiKey) {
+    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  }
+
+  const conversationId = parseInt(c.req.param('conversationId'), 10);
+  if (isNaN(conversationId)) {
+    return c.json({ error: 'Invalid conversation ID' }, 400);
+  }
+
+  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  if (!conversation) {
+    return c.json({ error: 'Conversation not found' }, 404);
+  }
+
+  // Parse and validate body
+  const body = await c.req.json<{ message: string }>();
+  if (!body.message || typeof body.message !== 'string' || body.message.trim() === '') {
+    return c.json({ error: 'Message is required' }, 400);
+  }
+
+  // Create outbound message
+  const [newMessage] = await db
+    .insert(messages)
+    .values({
+      conversationId: conversation.id,
+      direction: 'outbound',
+      content: body.message.trim(),
+    })
+    .returning();
+
+  return c.json({
+    id: newMessage.id,
+    direction: newMessage.direction,
+    text: newMessage.content,
+    createdAt: newMessage.createdAt,
+  });
+});
