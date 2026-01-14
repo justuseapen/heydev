@@ -67,3 +67,13 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Static routes (like /unread-count) must be defined BEFORE parameterized routes (like /:conversationId) in Hono
   - Use `and()` with multiple `isNull()` conditions for compound WHERE clauses
 ---
+
+## 2026-01-14 - US-008
+- What was implemented: LandingPage.tsx hero section component
+- Files changed: dashboard/src/pages/LandingPage.tsx
+- **Learnings for future iterations:**
+  - Dashboard uses TailwindCSS for styling
+  - Pages go in dashboard/src/pages/, components in dashboard/src/components/
+  - Use `document.getElementById()` and `scrollIntoView({ behavior: 'smooth' })` for scroll-to-section
+  - Vintage-inspired design uses Georgia serif for headings, system fonts elsewhere
+---
