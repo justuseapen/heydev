@@ -12,8 +12,24 @@ import { createSSEClient, type SSEClientInstance, type SSEMessage } from './serv
 import { installErrorInterceptor } from './utils/consoleErrors';
 import { getSessionId } from './utils/session';
 import { createThemeStyleElement, type Theme } from './utils/theme';
+import {
+  installErrorCapture,
+  uninstallErrorCapture,
+  installNetworkCapture,
+  uninstallNetworkCapture,
+  type CapturedErrorEvent,
+} from './utils/errorCapture';
+import { submitError } from './services/submitError';
 
-/** Configuration options read from script tag data attributes */
+/**
+ * Configuration options read from script tag data attributes
+ *
+ * Supported attributes:
+ * - data-api-key (required): API key for authentication
+ * - data-endpoint: Backend endpoint URL (default: https://api.heydev.io)
+ * - data-theme: 'light', 'dark', or 'auto' (default: 'auto')
+ * - data-error-tracking: 'true' to enable automatic error capture (default: 'false')
+ */
 interface WidgetConfig {
   /** API key for authentication (required) */
   apiKey: string;
@@ -21,6 +37,8 @@ interface WidgetConfig {
   endpoint: string;
   /** Theme setting: 'light', 'dark', or 'auto' (default: 'auto') */
   theme: Theme;
+  /** Whether error tracking is enabled */
+  errorTracking: boolean;
 }
 
 /** The HeyDev widget public API */
@@ -35,6 +53,8 @@ export interface HeyDevWidget {
   isOpen: () => boolean;
   /** Destroy the widget and remove from DOM */
   destroy: () => void;
+  /** Manually capture and submit an error */
+  captureError: (error: Error) => void;
 }
 
 /** Global HeyDev object exposed on window */
@@ -98,10 +118,15 @@ function getConfigFromScript(): WidgetConfig | null {
     theme = themeAttr;
   }
 
+  // Parse error-tracking attribute (default: false)
+  const errorTrackingAttr = script.getAttribute('data-error-tracking');
+  const errorTracking = errorTrackingAttr === 'true';
+
   return {
     apiKey,
     endpoint,
     theme,
+    errorTracking,
   };
 }
 
@@ -144,6 +169,21 @@ function createShadowContainer(theme: Theme): ShadowRoot {
 function initWidget(config: WidgetConfig): HeyDevWidget {
   // Install console error interceptor
   installErrorInterceptor();
+
+  // Error capture callback for submitting captured errors
+  const handleCapturedError = (error: CapturedErrorEvent) => {
+    submitError({
+      error,
+      endpoint: config.endpoint,
+      apiKey: config.apiKey,
+    });
+  };
+
+  // Install error tracking if enabled
+  if (config.errorTracking) {
+    installErrorCapture(handleCapturedError);
+    installNetworkCapture(handleCapturedError, config.endpoint);
+  }
 
   // Create Shadow DOM container with theme
   const shadow = createShadowContainer(config.theme);
@@ -318,6 +358,10 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
         sseClient = null;
       }
 
+      // Cleanup error capture
+      uninstallErrorCapture();
+      uninstallNetworkCapture();
+
       if (conversationHistory) {
         conversationHistory.destroy();
       }
@@ -335,6 +379,15 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
 
       // Clear global reference
       delete window.HeyDev;
+    },
+    captureError: (error: Error) => {
+      // Manual error capture - works regardless of error tracking setting
+      const capturedError: CapturedErrorEvent = {
+        error_type: 'exception',
+        message: error.message || 'Unknown error',
+        stack: error.stack,
+      };
+      handleCapturedError(capturedError);
     },
   };
 
