@@ -44,3 +44,17 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Use `asc(column)` for ascending sort order in Drizzle
   - Extract context from first inbound message for conversation metadata
 ---
+
+## 2026-01-14 - US-004, US-005, US-006
+- What was implemented: Conversation status management endpoints
+  - PATCH /:conversationId/read - marks as read
+  - PATCH /:conversationId/status - updates status (new/resolved)
+  - PATCH /:conversationId/archive - archives
+  - PATCH /:conversationId/unarchive - unarchives
+- Files changed: server/src/routes/feedbackApi.ts
+- **Learnings for future iterations:**
+  - Use `.update().set().where().returning()` for updates with Drizzle
+  - Timestamps stored as Unix seconds: `Math.floor(Date.now() / 1000)`
+  - Parse JSON body with `c.req.json<TypeHint>()` in Hono
+  - Created helper `getConversationForUser()` to DRY up ownership checks
+---
