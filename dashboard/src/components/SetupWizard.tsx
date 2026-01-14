@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 // In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -320,12 +321,11 @@ export function SetupWizard({ currentStep, onStepChange }: SetupWizardProps) {
           />
         )}
 
-        {/* Step 4: Test Integration - placeholder */}
+        {/* Step 4: Test Integration */}
         {currentStep === 4 && (
-          <StepPlaceholder
-            title="Test Your Integration"
-            description="Verify that your widget is working correctly."
+          <Step4TestIntegration
             onBack={() => handleStepAdvance(3)}
+            onComplete={() => handleStepAdvance(4)}
           />
         )}
       </div>
@@ -937,55 +937,229 @@ function Step3Notifications({ onBack, onContinue, onSkip }: Step3NotificationsPr
   );
 }
 
-// Placeholder component for individual steps (will be replaced in future stories)
-interface StepPlaceholderProps {
-  title: string;
-  description: string;
-  onBack?: () => void;
-  onContinue?: () => void;
-  skipLabel?: string;
+// Step 4: Test Integration component
+interface Step4TestIntegrationProps {
+  onBack: () => void;
+  onComplete: () => void;
 }
 
-function StepPlaceholder({
-  title,
-  description,
-  onBack,
-  onContinue,
-  skipLabel,
-}: StepPlaceholderProps) {
+function Step4TestIntegration({ onBack, onComplete }: Step4TestIntegrationProps) {
+  const [websiteUrl, setWebsiteUrl] = useState('');
+  const [isPolling, setIsPolling] = useState(false);
+  const [feedbackReceived, setFeedbackReceived] = useState(false);
+  const [initialFeedbackCount, setInitialFeedbackCount] = useState<number | null>(null);
+  const navigate = useNavigate();
+
+  // Start polling for feedback when component mounts or URL changes
+  useEffect(() => {
+    if (!isPolling) return;
+
+    const pollInterval = setInterval(async () => {
+      try {
+        const response = await fetch(`${API_URL}/api/feedback`, {
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const currentCount = data.feedback?.length || 0;
+
+          // If this is the first poll, set the initial count
+          if (initialFeedbackCount === null) {
+            setInitialFeedbackCount(currentCount);
+          } else if (currentCount > initialFeedbackCount) {
+            // Feedback count increased - success!
+            setFeedbackReceived(true);
+            setIsPolling(false);
+          }
+        }
+      } catch (error) {
+        console.error('Error polling for feedback:', error);
+      }
+    }, 3000);
+
+    return () => clearInterval(pollInterval);
+  }, [isPolling, initialFeedbackCount]);
+
+  const handleOpenTestPage = () => {
+    if (!websiteUrl) return;
+
+    // Ensure URL has protocol
+    let url = websiteUrl;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+
+    // Open in new tab
+    window.open(url, '_blank');
+
+    // Start polling for feedback
+    setIsPolling(true);
+  };
+
+  const handleGoToInbox = async () => {
+    await onComplete();
+    navigate('/inbox');
+  };
+
+  const handleSkipTest = async () => {
+    await onComplete();
+    navigate('/inbox');
+  };
+
   return (
-    <div className="text-center py-8">
-      <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
-      <p className="text-gray-600 mb-8">{description}</p>
+    <div className="py-4">
+      <h3 className="text-lg font-semibold text-gray-900 mb-2 text-center">
+        Test Your Integration
+      </h3>
+      <p className="text-gray-600 mb-6 text-center">
+        Verify that your widget is working correctly on your website.
+      </p>
 
-      <div className="flex items-center justify-center gap-4">
-        {onBack && (
-          <button
-            onClick={onBack}
-            className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-          >
-            Back
-          </button>
-        )}
+      {!feedbackReceived ? (
+        <>
+          {/* URL Input */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Enter your website URL
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="url"
+                placeholder="https://yoursite.com"
+                value={websiteUrl}
+                onChange={(e) => setWebsiteUrl(e.target.value)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+              <button
+                onClick={handleOpenTestPage}
+                disabled={!websiteUrl}
+                className="px-4 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"
+                  />
+                </svg>
+                Open Test Page
+              </button>
+            </div>
+          </div>
 
-        {onContinue && (
+          {/* Instructions */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <h4 className="text-sm font-medium text-gray-900 mb-3">How to test:</h4>
+            <ol className="space-y-2 text-sm text-gray-600">
+              <li className="flex items-start gap-2">
+                <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium shrink-0">
+                  1
+                </span>
+                Open your site
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium shrink-0">
+                  2
+                </span>
+                Look for the feedback button
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="inline-flex items-center justify-center h-5 w-5 rounded-full bg-indigo-100 text-indigo-600 text-xs font-medium shrink-0">
+                  3
+                </span>
+                Submit a test message
+              </li>
+            </ol>
+          </div>
+
+          {/* Polling status */}
+          {isPolling && (
+            <div className="flex items-center justify-center gap-3 py-4 mb-6 bg-blue-50 rounded-lg">
+              <svg
+                className="animate-spin h-5 w-5 text-blue-600"
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                />
+              </svg>
+              <span className="text-sm text-blue-700">
+                Waiting for test feedback...
+              </span>
+            </div>
+          )}
+
+          {/* Navigation */}
+          <div className="flex items-center justify-center gap-4">
+            <button
+              onClick={onBack}
+              className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+            >
+              Back
+            </button>
+          </div>
+
+          {/* Skip link */}
+          <div className="mt-4 text-center">
+            <button
+              onClick={handleSkipTest}
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+            >
+              Skip test
+            </button>
+          </div>
+        </>
+      ) : (
+        /* Success state */
+        <div className="text-center py-6">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-4">
+            <svg
+              className="h-8 w-8 text-green-600"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
+            </svg>
+          </div>
+          <h4 className="text-lg font-semibold text-gray-900 mb-2">
+            It works!
+          </h4>
+          <p className="text-gray-600 mb-6">
+            Your first feedback arrived.
+          </p>
           <button
-            onClick={onContinue}
+            onClick={handleGoToInbox}
             className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
           >
-            Continue
+            Go to Inbox
           </button>
-        )}
-
-        {skipLabel && onContinue && (
-          <button
-            onClick={onContinue}
-            className="px-6 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            {skipLabel}
-          </button>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
