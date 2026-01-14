@@ -35,6 +35,9 @@ export type ErrorCaptureCallback = (error: CapturedErrorEvent) => void;
 /** Original window.onerror handler */
 let originalOnError: OnErrorEventHandler | null = null;
 
+/** Original window.onunhandledrejection handler */
+let originalOnUnhandledRejection: ((ev: PromiseRejectionEvent) => void) | null = null;
+
 /** Whether error capture is currently installed */
 let isErrorCaptureInstalled = false;
 
@@ -124,20 +127,82 @@ export function installErrorCapture(callback: ErrorCaptureCallback): void {
     return false;
   };
 
+  // Store original unhandled rejection handler
+  originalOnUnhandledRejection = window.onunhandledrejection;
+
+  // Install unhandled promise rejection handler
+  window.onunhandledrejection = function (event: PromiseRejectionEvent): void {
+    const reason = event.reason;
+
+    // Convert rejection reason to error format
+    let errorMessage: string;
+    let stack: string | undefined;
+
+    if (reason instanceof Error) {
+      errorMessage = reason.message || 'Unhandled promise rejection';
+      stack = reason.stack;
+    } else if (typeof reason === 'string') {
+      errorMessage = reason;
+    } else {
+      errorMessage = 'Unhandled promise rejection';
+      try {
+        // Try to stringify the rejection reason for more context
+        errorMessage += ': ' + JSON.stringify(reason);
+      } catch {
+        // Ignore serialization errors
+      }
+    }
+
+    // Skip HeyDev's own errors
+    if (isHeyDevError(undefined, stack)) {
+      // Still call original handler
+      if (originalOnUnhandledRejection) {
+        originalOnUnhandledRejection.call(window, event);
+      }
+      return;
+    }
+
+    // Capture the rejection as an exception
+    const capturedError: CapturedErrorEvent = {
+      error_type: 'exception',
+      message: errorMessage,
+      stack,
+    };
+
+    // Call callback with captured error
+    if (errorCallback) {
+      try {
+        errorCallback(capturedError);
+      } catch {
+        // Silently ignore errors in callback to prevent infinite loops
+      }
+    }
+
+    // Call original handler if it exists
+    if (originalOnUnhandledRejection) {
+      originalOnUnhandledRejection.call(window, event);
+    }
+  };
+
   isErrorCaptureInstalled = true;
 }
 
 /**
- * Uninstall the window.onerror handler and restore original behavior
+ * Uninstall the error handlers and restore original behavior
  */
 export function uninstallErrorCapture(): void {
   if (!isErrorCaptureInstalled) {
     return;
   }
 
-  // Restore original handler
+  // Restore original onerror handler
   window.onerror = originalOnError;
   originalOnError = null;
+
+  // Restore original unhandled rejection handler
+  window.onunhandledrejection = originalOnUnhandledRejection;
+  originalOnUnhandledRejection = null;
+
   errorCallback = null;
   isErrorCaptureInstalled = false;
 }
