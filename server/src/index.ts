@@ -17,6 +17,7 @@ import { eventsRoutes } from './routes/events.js';
 import { authRoutes } from './routes/auth.js';
 import { keysRoutes } from './routes/keys.js';
 import { channelsRoutes } from './routes/channels.js';
+import { feedbackApiRoutes } from './routes/feedbackApi.js';
 import { registerWebhookSender } from './services/webhookSender.js';
 import { registerEmailSender } from './services/emailNotificationSender.js';
 
@@ -62,6 +63,10 @@ app.route('/api/keys', keysRoutes);
 
 // Channel management routes (requires session auth, not API key auth)
 app.route('/api/channels', channelsRoutes);
+
+// Feedback inbox routes (requires session auth, not API key auth)
+// Note: GET /api/feedback is session-auth, POST /api/feedback is API key auth (under protected routes)
+app.route('/api/feedback', feedbackApiRoutes);
 
 // Protected API routes - require API key authentication
 const api = new Hono();
