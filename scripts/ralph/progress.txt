@@ -103,3 +103,11 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Use FormEvent type for form onSubmit handlers
   - Pattern: loading/success/error state trio for async forms
 ---
+
+## 2026-01-14 - US-012
+- What was implemented: Footer with GitHub link and copyright
+- Files changed: dashboard/src/pages/LandingPage.tsx
+- **Learnings for future iterations:**
+  - Use `new Date().getFullYear()` for dynamic copyright year
+  - Always add `rel="noopener noreferrer"` with `target="_blank"` for security
+---
