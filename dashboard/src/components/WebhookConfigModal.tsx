@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 interface WebhookConfig {
   url: string;

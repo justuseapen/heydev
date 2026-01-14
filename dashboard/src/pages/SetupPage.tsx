@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { WebhookConfigModal } from '../components/WebhookConfigModal';
 import { EmailConfigModal } from '../components/EmailConfigModal';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 interface User {
   id: number;

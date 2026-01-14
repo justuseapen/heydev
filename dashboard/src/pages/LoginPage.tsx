@@ -1,7 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
+const API_URL = import.meta.env.VITE_API_URL || '';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
