@@ -12,6 +12,9 @@ interface Conversation {
   createdAt: string;
   latestMessage: string | null;
   messageCount: number;
+  type: 'feedback' | 'error';
+  occurrenceCount: number;
+  lastOccurredAt: string | null;
 }
 
 type TypeFilter = 'all' | 'feedback' | 'error';
@@ -19,6 +22,23 @@ type TypeFilter = 'all' | 'feedback' | 'error';
 interface FeedbackListProps {
   archived: boolean;
   typeFilter?: TypeFilter;
+}
+
+function ErrorIcon() {
+  return (
+    <svg
+      className="w-4 h-4 text-red-600"
+      fill="currentColor"
+      viewBox="0 0 20 20"
+      aria-hidden="true"
+    >
+      <path
+        fillRule="evenodd"
+        d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -96,19 +116,29 @@ export function FeedbackList({ archived, typeFilter = 'all' }: FeedbackListProps
     <div className="space-y-2">
       {conversations.map((conv) => {
         const isUnread = conv.readAt === null;
+        const isError = conv.type === 'error';
 
         return (
           <Link
             key={conv.id}
             to={`/inbox/${conv.id}`}
-            className="block p-4 bg-white border border-gray-200 hover:bg-gray-50 transition-colors"
+            className={`block p-4 border transition-colors ${
+              isError
+                ? 'bg-red-50 border-red-200 hover:bg-red-100'
+                : 'bg-white border-gray-200 hover:bg-gray-50'
+            }`}
           >
             <div className="flex items-start gap-3">
-              {/* Unread indicator */}
-              {isUnread && (
+              {/* Type and unread indicator */}
+              {isError ? (
+                <span className="mt-0.5 flex-shrink-0">
+                  <ErrorIcon />
+                </span>
+              ) : isUnread ? (
                 <span className="mt-2 w-2 h-2 bg-red-500 rounded-full flex-shrink-0" />
+              ) : (
+                <span className="w-4 flex-shrink-0" />
               )}
-              {!isUnread && <span className="w-2 flex-shrink-0" />}
 
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between gap-4">
@@ -133,6 +163,11 @@ export function FeedbackList({ archived, typeFilter = 'all' }: FeedbackListProps
                   >
                     {conv.status}
                   </span>
+                  {isError && conv.occurrenceCount > 1 && (
+                    <span className="text-xs px-2 py-0.5 bg-red-100 text-red-800">
+                      {conv.occurrenceCount} occurrences
+                    </span>
+                  )}
                   <span className="text-xs text-gray-400">
                     {conv.messageCount} message{conv.messageCount !== 1 ? 's' : ''}
                   </span>
