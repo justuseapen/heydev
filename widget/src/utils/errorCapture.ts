@@ -38,11 +38,23 @@ let originalOnError: OnErrorEventHandler | null = null;
 /** Original window.onunhandledrejection handler */
 let originalOnUnhandledRejection: ((ev: PromiseRejectionEvent) => void) | null = null;
 
+/** Original fetch function */
+let originalFetch: typeof fetch | null = null;
+
 /** Whether error capture is currently installed */
 let isErrorCaptureInstalled = false;
 
+/** Whether network capture is currently installed */
+let isNetworkCaptureInstalled = false;
+
 /** Callback for captured errors */
 let errorCallback: ErrorCaptureCallback | null = null;
+
+/** Callback for captured network errors */
+let networkCallback: ErrorCaptureCallback | null = null;
+
+/** HeyDev endpoint URL for filtering */
+let heydevEndpoint: string | null = null;
 
 /**
  * Check if an error originated from HeyDev widget code
@@ -212,4 +224,160 @@ export function uninstallErrorCapture(): void {
  */
 export function isErrorCaptureActive(): boolean {
   return isErrorCaptureInstalled;
+}
+
+/**
+ * Check if a URL is a HeyDev API endpoint
+ * Used to prevent capturing errors from our own requests
+ */
+function isHeyDevApiUrl(url: string): boolean {
+  if (!heydevEndpoint) {
+    return false;
+  }
+  try {
+    const urlObj = new URL(url);
+    const endpointObj = new URL(heydevEndpoint);
+    return urlObj.hostname === endpointObj.hostname;
+  } catch {
+    // If URL parsing fails, do a simple string check
+    return url.includes(heydevEndpoint);
+  }
+}
+
+/**
+ * Install network error capture by wrapping global fetch
+ *
+ * Captures:
+ * - HTTP responses with 4xx/5xx status codes
+ * - Network failures (connection refused, timeout, etc.)
+ *
+ * @param callback - Function called when a network error is captured
+ * @param endpoint - HeyDev endpoint URL to exclude from capture
+ */
+export function installNetworkCapture(callback: ErrorCaptureCallback, endpoint?: string): void {
+  if (isNetworkCaptureInstalled) {
+    return;
+  }
+
+  networkCallback = callback;
+  heydevEndpoint = endpoint || null;
+
+  // Store original fetch
+  originalFetch = window.fetch;
+
+  // Wrap fetch to capture errors
+  window.fetch = async function (input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
+    // Determine the URL being fetched
+    let url: string;
+    let method = 'GET';
+
+    if (typeof input === 'string') {
+      url = input;
+    } else if (input instanceof URL) {
+      url = input.toString();
+    } else if (input instanceof Request) {
+      url = input.url;
+      method = input.method || 'GET';
+    } else {
+      url = String(input);
+    }
+
+    // Override method if specified in init
+    if (init?.method) {
+      method = init.method;
+    }
+
+    // Skip HeyDev API requests to prevent infinite loops
+    if (isHeyDevApiUrl(url)) {
+      return originalFetch!.call(window, input, init);
+    }
+
+    try {
+      const response = await originalFetch!.call(window, input, init);
+
+      // Check for error status codes (4xx and 5xx)
+      if (response.status >= 400) {
+        // Clone response to read body without consuming it
+        const clonedResponse = response.clone();
+        let responseText = '';
+
+        try {
+          const text = await clonedResponse.text();
+          // Capture first 200 chars of response
+          responseText = text.slice(0, 200);
+        } catch {
+          // Ignore errors reading response body
+        }
+
+        const capturedError: CapturedErrorEvent = {
+          error_type: 'network',
+          message: responseText || `HTTP ${response.status} ${response.statusText}`,
+          url,
+          status: response.status,
+          method,
+        };
+
+        // Call callback with captured error
+        if (networkCallback) {
+          try {
+            networkCallback(capturedError);
+          } catch {
+            // Silently ignore errors in callback to prevent infinite loops
+          }
+        }
+      }
+
+      return response;
+    } catch (error) {
+      // Network failure (connection refused, timeout, DNS error, etc.)
+      const errorMessage = error instanceof Error ? error.message : 'Network request failed';
+
+      const capturedError: CapturedErrorEvent = {
+        error_type: 'network',
+        message: errorMessage,
+        url,
+        method,
+      };
+
+      // Call callback with captured error
+      if (networkCallback) {
+        try {
+          networkCallback(capturedError);
+        } catch {
+          // Silently ignore errors in callback to prevent infinite loops
+        }
+      }
+
+      // Re-throw the original error
+      throw error;
+    }
+  };
+
+  isNetworkCaptureInstalled = true;
+}
+
+/**
+ * Uninstall network capture and restore original fetch
+ */
+export function uninstallNetworkCapture(): void {
+  if (!isNetworkCaptureInstalled) {
+    return;
+  }
+
+  // Restore original fetch
+  if (originalFetch) {
+    window.fetch = originalFetch;
+    originalFetch = null;
+  }
+
+  networkCallback = null;
+  heydevEndpoint = null;
+  isNetworkCaptureInstalled = false;
+}
+
+/**
+ * Check if network capture is currently installed
+ */
+export function isNetworkCaptureActive(): boolean {
+  return isNetworkCaptureInstalled;
 }
