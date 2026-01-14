@@ -146,9 +146,22 @@ authRoutes.get('/verify', async (c) => {
     maxAge: SESSION_EXPIRY_MS / 1000, // maxAge is in seconds
   });
 
-  // Redirect to dashboard setup page
+  // Get user to check setup state
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, authToken.userId),
+  });
+
   const dashboardUrl = process.env.DASHBOARD_URL || 'http://localhost:5174';
-  return c.redirect(`${dashboardUrl}/setup`);
+
+  // Redirect based on setup completion state
+  if (user && user.setupCompletedAt !== null) {
+    // Setup complete - go to inbox
+    return c.redirect(`${dashboardUrl}/inbox`);
+  } else {
+    // Setup not complete - go to setup wizard at current step
+    const step = user?.setupStep ?? 1;
+    return c.redirect(`${dashboardUrl}/setup?step=${step}`);
+  }
 });
 
 /**
