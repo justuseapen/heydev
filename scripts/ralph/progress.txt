@@ -167,3 +167,12 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Optimistic UI: append new message to state immediately after API success
   - Textarea resize-none prevents user from resizing
 ---
+
+## 2026-01-14 - US-019, US-020
+- What was implemented: Status change and archive/unarchive buttons
+- Files changed: dashboard/src/pages/ConversationPage.tsx
+- **Learnings for future iterations:**
+  - Conditional rendering: show different buttons based on conversation.status and archivedAt
+  - Archive -> redirect to /inbox; Unarchive -> update local state
+  - Group action buttons in header bar alongside back link
+---
