@@ -40,9 +40,11 @@ eslint.config.js
 tasks/
 scripts/
 
-# Dashboard and widget source (server only for now)
-dashboard/
+# Widget source (CDN-hosted)
 widget/
 
 # Claude code config
 .claude/
+
+# Archive
+archive/
