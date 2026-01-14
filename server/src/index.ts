@@ -100,6 +100,37 @@ api.route('/webhook', webhookReplyRoutes);
 // Mount protected routes under /api
 app.route('/api', api);
 
+// Serve dashboard static files (production build)
+// This serves the React app's built assets
+import { existsSync, readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Dashboard is built to ../dashboard/dist relative to server/dist
+const dashboardPath = join(__dirname, '../../dashboard/dist');
+
+if (existsSync(dashboardPath)) {
+  // Serve static assets
+  app.use('/*', serveStatic({ root: dashboardPath }));
+
+  // SPA fallback - serve index.html for all non-API routes
+  app.get('*', (c) => {
+    const indexPath = join(dashboardPath, 'index.html');
+    if (existsSync(indexPath)) {
+      const html = readFileSync(indexPath, 'utf-8');
+      return c.html(html);
+    }
+    return c.notFound();
+  });
+
+  console.log(`Dashboard static files served from ${dashboardPath}`);
+} else {
+  console.log(`Dashboard not found at ${dashboardPath} - only API available`);
+}
+
 // Get port from environment or use default
 const port = parseInt(process.env.PORT || '3000', 10);
 

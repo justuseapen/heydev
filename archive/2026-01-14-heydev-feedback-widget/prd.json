@@ -1,0 +1,612 @@
+{
+  "project": "HeyDev",
+  "branchName": "ralph/heydev-feedback-widget",
+  "description": "HeyDev - A drop-in JavaScript widget for frictionless user feedback with voice input and multi-channel developer notifications (Slack, email, SMS, webhook)",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Project setup with TypeScript and build tooling",
+      "description": "As a developer, I need the project scaffolded with TypeScript, package.json, and build configuration.",
+      "acceptanceCriteria": [
+        "package.json created with name 'heydev'",
+        "TypeScript configured with tsconfig.json (strict mode)",
+        "Project structure: /widget (frontend), /server (backend), /dashboard (web UI)",
+        "ESLint and Prettier configured",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "Database schema for API keys and channels",
+      "description": "As a system, I need database tables to store API keys, notification channel configs, and conversations.",
+      "acceptanceCriteria": [
+        "SQLite database with Drizzle ORM configured",
+        "Table: api_keys (id, key, created_at, user_id)",
+        "Table: channels (id, api_key_id, type enum(slack/email/sms/webhook), config JSON, enabled boolean, verified boolean)",
+        "Table: conversations (id, api_key_id, session_id, created_at)",
+        "Table: messages (id, conversation_id, direction enum(inbound/outbound), content, created_at)",
+        "Migrations generated and runnable",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "Backend server setup with Hono",
+      "description": "As a system, I need a lightweight HTTP server with basic routing and middleware.",
+      "acceptanceCriteria": [
+        "Hono server configured in /server",
+        "CORS middleware allowing all origins",
+        "JSON body parsing middleware",
+        "Health check endpoint GET /health returns {status: 'ok'}",
+        "Server runs on configurable port (default 3000)",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "API key validation middleware",
+      "description": "As a system, I need to validate API keys on protected endpoints.",
+      "acceptanceCriteria": [
+        "Middleware extracts API key from X-API-Key header or query param",
+        "Validates key exists in database",
+        "Returns 401 with error message if invalid",
+        "Attaches api_key record to request context if valid",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "File upload endpoint for screenshots",
+      "description": "As a system, I need an endpoint to receive and store screenshot uploads.",
+      "acceptanceCriteria": [
+        "POST /api/upload accepts multipart/form-data with 'file' field",
+        "Validates file is image (png, jpg, webp)",
+        "Resizes image to max 1200px width if larger",
+        "Stores file locally in /uploads directory (S3 later)",
+        "Returns JSON with url field pointing to uploaded file",
+        "Serves uploaded files at GET /uploads/:filename",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "Transcription endpoint with Whisper fallback",
+      "description": "As a system, I need an endpoint to transcribe audio when browser API unavailable.",
+      "acceptanceCriteria": [
+        "POST /api/transcribe accepts audio blob (webm/opus)",
+        "Sends audio to OpenAI Whisper API",
+        "Returns JSON with text field containing transcription",
+        "Returns 500 with error if transcription fails",
+        "Rate limited to 10 requests/minute per session",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "Feedback submission endpoint",
+      "description": "As a system, I need an endpoint to receive feedback and create conversations.",
+      "acceptanceCriteria": [
+        "POST /api/feedback accepts JSON with text, screenshot_url, audio_url, context object",
+        "Context includes: url, browser, os, viewport, timestamp, timezone, console_errors array",
+        "Creates or retrieves conversation by session_id",
+        "Stores message in messages table with direction 'inbound'",
+        "Returns JSON with conversation_id",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Context capture utility module",
+      "description": "As the widget, I need a module to capture page context automatically.",
+      "acceptanceCriteria": [
+        "Function captureContext() returns object with: url, browser, os, viewport, timestamp, timezone",
+        "Browser/OS parsed from navigator.userAgent",
+        "Viewport from window.innerWidth/innerHeight",
+        "Timestamp in ISO format with timezone name",
+        "Typecheck passes"
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Console error capture utility",
+      "description": "As the widget, I need to capture recent console errors for context.",
+      "acceptanceCriteria": [
+        "Intercepts console.error calls without breaking original behavior",
+        "Stores last 5 errors with message and timestamp",
+        "Function getConsoleErrors() returns array of captured errors",
+        "Errors older than 5 minutes are pruned",
+        "Typecheck passes"
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Session ID generation and storage",
+      "description": "As the widget, I need to generate and persist anonymous session IDs.",
+      "acceptanceCriteria": [
+        "Function getSessionId() returns existing or creates new session ID",
+        "Session ID stored in sessionStorage (not cookies)",
+        "Session ID format: 'sess_' + 16 random alphanumeric chars",
+        "Same session ID returned for duration of browser session",
+        "Typecheck passes"
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Widget floating button component",
+      "description": "As a user, I want to see a feedback button fixed to the bottom-right corner.",
+      "acceptanceCriteria": [
+        "Circular button 56px diameter, fixed position bottom-right (24px from edges)",
+        "Chat/feedback icon (SVG inline)",
+        "Subtle box-shadow and hover state (scale 1.05)",
+        "Entrance animation (fade + slide up)",
+        "Clicking button dispatches 'heydev:open' custom event",
+        "Uses CSS custom properties for theming (--heydev-primary)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Widget feedback panel skeleton",
+      "description": "As a user, I want a panel that opens when I click the feedback button.",
+      "acceptanceCriteria": [
+        "Panel 360px wide, 480px max height, positioned above the button",
+        "Header with 'Send Feedback' title and close (X) button",
+        "Panel opens on 'heydev:open' event, closes on 'heydev:close' or X click",
+        "Slide-up animation on open, slide-down on close",
+        "Click outside panel closes it",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Text input in feedback panel",
+      "description": "As a user, I want to type my feedback in a text area.",
+      "acceptanceCriteria": [
+        "Textarea with placeholder 'What's on your mind?'",
+        "Auto-resizes up to 150px height",
+        "Submit button below textarea, disabled when empty",
+        "Cmd/Ctrl+Enter keyboard shortcut submits",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Screenshot capture button",
+      "description": "As a user, I want to attach a screenshot to my feedback.",
+      "acceptanceCriteria": [
+        "Camera icon button next to text area",
+        "Uses html2canvas to capture visible viewport",
+        "Shows loading spinner while capturing",
+        "Displays thumbnail preview (80px) below text area after capture",
+        "X button on thumbnail removes screenshot",
+        "Only one screenshot allowed at a time",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Voice recording button with Web Speech API",
+      "description": "As a user, I want to record my feedback by voice with real-time transcription.",
+      "acceptanceCriteria": [
+        "Microphone button prominently displayed in panel",
+        "Clicking starts recording with visual indicator (pulsing red dot)",
+        "Uses Web Speech API (SpeechRecognition) for real-time transcription",
+        "Transcribed text appears in textarea as user speaks",
+        "Click again or 60-second limit stops recording",
+        "Shows 'Voice not supported' message if browser lacks Web Speech API",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Voice recording fallback to Whisper API",
+      "description": "As a user, I want voice input to work even if my browser lacks Web Speech API.",
+      "acceptanceCriteria": [
+        "Detects if SpeechRecognition unavailable",
+        "Falls back to MediaRecorder to capture audio blob",
+        "Uploads blob to /api/transcribe endpoint on recording stop",
+        "Shows loading state during transcription",
+        "Populates textarea with returned transcription",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Submit feedback to backend",
+      "description": "As a user, I want my feedback sent to the backend when I click submit.",
+      "acceptanceCriteria": [
+        "Submit button shows loading spinner during submission",
+        "Uploads screenshot first if present, gets URL",
+        "Calls POST /api/feedback with text, screenshot_url, context, session_id",
+        "Shows success message on completion ('Feedback sent!')",
+        "Clears form and closes panel after 2 seconds",
+        "Shows error message if submission fails",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 17,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Widget script entry point and initialization",
+      "description": "As a developer, I want the widget to auto-initialize from a script tag.",
+      "acceptanceCriteria": [
+        "Script reads data-api-key attribute from its own script tag",
+        "Script reads optional data-endpoint for custom backend URL",
+        "Injects Shadow DOM container to isolate styles",
+        "Renders floating button and panel inside shadow root",
+        "Exposes window.HeyDev object with open(), close() methods",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Widget Vite build configuration",
+      "description": "As a developer, I need the widget bundled as a single JS file for CDN.",
+      "acceptanceCriteria": [
+        "Vite configured for /widget with library mode output",
+        "Outputs single widget.js file with CSS inlined",
+        "Bundle size under 50KB gzipped",
+        "IIFE format for direct script tag inclusion",
+        "Source maps generated for debugging",
+        "Typecheck passes"
+      ],
+      "priority": 19,
+      "passes": true,
+      "notes": "Bundle is 9.5KB gzipped. html2canvas loaded from CDN at runtime to keep bundle small."
+    },
+    {
+      "id": "US-020",
+      "title": "Notification channel router",
+      "description": "As a system, I need to route feedback to all enabled notification channels.",
+      "acceptanceCriteria": [
+        "Function routeToChannels(apiKeyId, feedback, context) fetches enabled channels",
+        "Calls appropriate sender function for each channel type",
+        "Collects results/errors from all channels",
+        "Returns summary of delivery statuses",
+        "Typecheck passes"
+      ],
+      "priority": 20,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-021",
+      "title": "Webhook notification sender",
+      "description": "As a system, I need to send feedback to configured webhooks.",
+      "acceptanceCriteria": [
+        "POST request to configured webhook URL",
+        "Payload matches documented webhook schema (event, feedback, context, session_id)",
+        "HMAC-SHA256 signature in X-HeyDev-Signature header",
+        "Custom headers from channel config included",
+        "5 second timeout",
+        "Returns success/failure with status code",
+        "Typecheck passes"
+      ],
+      "priority": 21,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-022",
+      "title": "Webhook retry logic",
+      "description": "As a system, I need to retry failed webhook deliveries.",
+      "acceptanceCriteria": [
+        "Failed webhooks (non-2xx or timeout) queued for retry",
+        "Retry 3 times with exponential backoff (1s, 4s, 16s delays)",
+        "Uses simple in-memory queue (no external deps)",
+        "Logs final failure after all retries exhausted",
+        "Typecheck passes"
+      ],
+      "priority": 22,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-023",
+      "title": "Webhook reply endpoint",
+      "description": "As a developer, I want to send replies to users via API.",
+      "acceptanceCriteria": [
+        "POST /api/webhook/reply accepts JSON with session_id and message",
+        "Validates API key",
+        "Finds active conversation by session_id",
+        "Stores message with direction 'outbound'",
+        "Returns success/failure status",
+        "Typecheck passes"
+      ],
+      "priority": 23,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-024",
+      "title": "SSE endpoint for real-time replies",
+      "description": "As the widget, I need to receive developer replies in real-time.",
+      "acceptanceCriteria": [
+        "GET /api/events/:sessionId establishes SSE connection",
+        "Server sends 'message' events when outbound messages created",
+        "Event data includes message text and timestamp",
+        "Connection kept alive with heartbeat every 30s",
+        "Handles client disconnect gracefully",
+        "Typecheck passes"
+      ],
+      "priority": 24,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-025",
+      "title": "Widget SSE connection for replies",
+      "description": "As a user, I want to see developer replies appear in the widget.",
+      "acceptanceCriteria": [
+        "Widget connects to SSE endpoint after first feedback sent",
+        "Incoming messages displayed in panel with 'Developer' label",
+        "Notification badge on floating button when panel closed and reply received",
+        "Badge clears when panel opened",
+        "Reconnects automatically if connection drops",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 25,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-026",
+      "title": "Conversation history in widget",
+      "description": "As a user, I want to see the conversation history in the feedback panel.",
+      "acceptanceCriteria": [
+        "Messages displayed chronologically above input area",
+        "User messages aligned right, developer messages aligned left",
+        "Timestamps shown on each message",
+        "Scrollable message area if conversation grows",
+        "History persists for session (stored in sessionStorage)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 26,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-027",
+      "title": "User follow-up replies",
+      "description": "As a user, I want to reply to developer messages.",
+      "acceptanceCriteria": [
+        "After first feedback, input changes to reply mode",
+        "Submit sends to POST /api/reply with conversation_id",
+        "Voice input still available for replies",
+        "New messages appear in conversation history",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 27,
+      "passes": true,
+      "notes": "Implemented POST /api/reply endpoint, submitReply service, FeedbackForm reply mode, and conversation ID persistence"
+    },
+    {
+      "id": "US-028",
+      "title": "Dashboard project setup",
+      "description": "As a developer, I need the dashboard scaffolded with React and routing.",
+      "acceptanceCriteria": [
+        "React app in /dashboard with Vite",
+        "TailwindCSS for styling",
+        "React Router with routes: /, /login, /setup",
+        "Basic layout component with header",
+        "Typecheck passes"
+      ],
+      "priority": 28,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-029",
+      "title": "Dashboard magic link authentication",
+      "description": "As a developer, I want to log in via magic link email.",
+      "acceptanceCriteria": [
+        "Login page with email input",
+        "POST /api/auth/magic-link sends email with login token",
+        "Token valid for 15 minutes",
+        "GET /api/auth/verify?token=xxx validates and returns session cookie",
+        "Dashboard redirects to /setup after successful auth",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 29,
+      "passes": true,
+      "notes": "Implemented magic link auth with users, auth_tokens, sessions tables. Email service with Resend integration (console fallback in dev)."
+    },
+    {
+      "id": "US-030",
+      "title": "Dashboard API key generation",
+      "description": "As a developer, I want to generate an API key for my project.",
+      "acceptanceCriteria": [
+        "Setup page shows 'Generate API Key' button if none exists",
+        "Clicking generates key and saves to database",
+        "Key displayed with copy button",
+        "Script tag snippet shown with key pre-filled",
+        "Key only shown once (stored hashed after initial display)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 30,
+      "passes": true,
+      "notes": "Key stored plain for validation, but only prefix shown after initial display"
+    },
+    {
+      "id": "US-031",
+      "title": "Dashboard notification channel list",
+      "description": "As a developer, I want to see available notification channels.",
+      "acceptanceCriteria": [
+        "Channel cards for: Slack, Email, SMS, Webhook",
+        "Each card shows: icon, name, status (connected/not connected)",
+        "Toggle switch to enable/disable each channel",
+        "Configure button opens channel-specific settings",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 31,
+      "passes": true,
+      "notes": "Channel cards with icons, toggle switches, Configure buttons. API routes at /api/channels."
+    },
+    {
+      "id": "US-032",
+      "title": "Dashboard webhook channel configuration",
+      "description": "As a developer, I want to configure a webhook endpoint for notifications.",
+      "acceptanceCriteria": [
+        "Webhook settings modal with URL input field",
+        "Custom headers key-value editor (add/remove rows)",
+        "Secret key displayed for HMAC verification",
+        "Test webhook button sends sample payload",
+        "Shows success/failure result of test",
+        "Save button persists configuration",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 32,
+      "passes": true,
+      "notes": "Webhook modal with URL, secret generation, custom headers, and test functionality. API routes at /api/channels/webhook/secret and /api/channels/webhook/test."
+    },
+    {
+      "id": "US-033",
+      "title": "Dashboard email channel configuration",
+      "description": "As a developer, I want to configure email notifications.",
+      "acceptanceCriteria": [
+        "Email settings modal with email address input",
+        "Send verification button triggers verification email",
+        "Verification email contains 6-digit code",
+        "Code input field to complete verification",
+        "Shows verified status after successful verification",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 33,
+      "passes": true,
+      "notes": "Email modal with verification flow. Codes stored in-memory, expire after 10 minutes."
+    },
+    {
+      "id": "US-034",
+      "title": "Email notification sender",
+      "description": "As a system, I need to send feedback notifications via email.",
+      "acceptanceCriteria": [
+        "Uses Resend or SendGrid SDK for email delivery",
+        "HTML email template with feedback text, screenshot, context",
+        "Reply-to address set for capturing developer replies",
+        "Subject line: 'New feedback from [page URL]'",
+        "Typecheck passes"
+      ],
+      "priority": 34,
+      "passes": true,
+      "notes": "Email notification sender with HTML/plain text templates. Uses existing Resend integration from emailService.ts."
+    },
+    {
+      "id": "US-035",
+      "title": "Docker Compose for self-hosting",
+      "description": "As a developer, I want to self-host HeyDev with one command.",
+      "acceptanceCriteria": [
+        "docker-compose.yml with server service",
+        "Volume mount for SQLite database persistence",
+        "Volume mount for uploads directory",
+        "Environment variables documented in .env.example",
+        "README.md with self-hosting instructions",
+        "Typecheck passes"
+      ],
+      "priority": 35,
+      "passes": true,
+      "notes": "Multi-stage Dockerfile with alpine, docker-compose.yml with named volumes, .env.example documented, README.md with self-hosting guide."
+    },
+    {
+      "id": "US-036",
+      "title": "Widget dark mode support",
+      "description": "As a user, I want the widget to match my system's dark mode preference.",
+      "acceptanceCriteria": [
+        "Widget detects prefers-color-scheme media query",
+        "Dark theme with appropriate colors (dark bg, light text)",
+        "CSS custom properties for all colors",
+        "data-theme attribute can override auto-detection",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 36,
+      "passes": true,
+      "notes": "Theme utility module with 20 CSS custom properties for dark mode. Auto-detection via prefers-color-scheme, override via data-theme attribute."
+    },
+    {
+      "id": "US-037",
+      "title": "Widget accessibility",
+      "description": "As a user with accessibility needs, I want the widget to be usable with keyboard and screen reader.",
+      "acceptanceCriteria": [
+        "All interactive elements focusable via Tab key",
+        "Escape key closes panel",
+        "ARIA labels on all buttons and inputs",
+        "Focus trapped inside panel when open",
+        "Respects prefers-reduced-motion (no animations)",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 37,
+      "passes": true,
+      "notes": "Focus trap utility with Tab/Shift+Tab cycling, Escape closes panel, ARIA labels on all elements. prefers-reduced-motion respected via CSS media queries."
+    }
+  ]
+}

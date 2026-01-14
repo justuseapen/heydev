@@ -1,8 +1,8 @@
-# HeyDev Server Dockerfile
-# Multi-stage build for smaller production image
+# HeyDev Full Stack Dockerfile
+# Multi-stage build for server + dashboard
 
-# Build stage
-FROM node:20-alpine AS builder
+# Build stage - Server
+FROM node:20-alpine AS server-builder
 
 WORKDIR /app
 
@@ -20,6 +20,27 @@ COPY tsconfig.json ./
 # Build the server
 RUN npm run build --workspace=server
 
+# Build stage - Dashboard
+FROM node:20-alpine AS dashboard-builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json ./
+COPY dashboard/package.json ./dashboard/
+
+# Install dashboard dependencies
+RUN npm ci --workspace=dashboard
+
+# Copy dashboard source
+COPY dashboard/ ./dashboard/
+COPY tsconfig.json ./
+
+# Build dashboard with production API URL
+ARG VITE_API_URL=
+ENV VITE_API_URL=${VITE_API_URL}
+RUN npm run build --workspace=dashboard
+
 # Production stage
 FROM node:20-alpine AS production
 
@@ -35,8 +56,11 @@ COPY server/package.json ./server/
 # Install production dependencies only
 RUN npm ci --workspace=server --omit=dev
 
-# Copy built files from builder stage
-COPY --from=builder /app/server/dist ./server/dist
+# Copy built server from builder stage
+COPY --from=server-builder /app/server/dist ./server/dist
+
+# Copy built dashboard from builder stage
+COPY --from=dashboard-builder /app/dashboard/dist ./dashboard/dist
 
 # Copy drizzle migrations
 COPY server/drizzle ./server/drizzle
