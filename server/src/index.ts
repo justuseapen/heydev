@@ -11,6 +11,7 @@ import { apiKeyAuth } from './middleware/apiKey.js';
 import { uploadRoutes } from './routes/upload.js';
 import { transcribeRoutes } from './routes/transcribe.js';
 import { feedbackRoutes } from './routes/feedback.js';
+import { errorsRoutes } from './routes/errors.js';
 import { replyRoutes } from './routes/reply.js';
 import { webhookReplyRoutes } from './routes/webhookReply.js';
 import { eventsRoutes } from './routes/events.js';
@@ -90,6 +91,9 @@ api.route('/transcribe', transcribeRoutes);
 
 // Mount feedback routes under /api/feedback (protected)
 api.route('/feedback', feedbackRoutes);
+
+// Mount error routes under /api/errors (protected)
+api.route('/errors', errorsRoutes);
 
 // Mount user reply routes under /api/reply (protected)
 api.route('/reply', replyRoutes);
