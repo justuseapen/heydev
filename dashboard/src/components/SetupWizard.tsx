@@ -311,14 +311,12 @@ export function SetupWizard({ currentStep, onStepChange }: SetupWizardProps) {
           />
         )}
 
-        {/* Step 3: Notification Configuration - placeholder */}
+        {/* Step 3: Notification Configuration */}
         {currentStep === 3 && (
-          <StepPlaceholder
-            title="Get Notified"
-            description="Configure how you receive feedback notifications."
+          <Step3Notifications
             onBack={() => handleStepAdvance(2)}
             onContinue={() => handleStepAdvance(4)}
-            skipLabel="Skip for now"
+            onSkip={() => handleStepAdvance(4)}
           />
         )}
 
@@ -715,6 +713,224 @@ function Step2WidgetInstall({ apiKey, onBack, onContinue }: Step2WidgetInstallPr
           className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
         >
           Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Step 3: Notification Configuration component
+interface Step3NotificationsProps {
+  onBack: () => void;
+  onContinue: () => void;
+  onSkip: () => void;
+}
+
+function Step3Notifications({ onBack, onContinue, onSkip }: Step3NotificationsProps) {
+  const [emailEnabled, setEmailEnabled] = useState(false);
+  const [emailAddress, setEmailAddress] = useState('');
+  const [webhookEnabled, setWebhookEnabled] = useState(false);
+  const [webhookUrl, setWebhookUrl] = useState('');
+
+  return (
+    <div className="py-4">
+      <h3 className="text-lg font-semibold text-gray-900 mb-2 text-center">
+        Get Notified
+      </h3>
+      <p className="text-gray-500 mb-6 text-center text-sm">
+        Optional - you can set this up later
+      </p>
+
+      {/* Notification channel cards */}
+      <div className="space-y-4 mb-6">
+        {/* Email notification card */}
+        <div className="border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-indigo-100 rounded-lg flex items-center justify-center">
+                <svg
+                  className="h-5 w-5 text-indigo-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">Email</h4>
+                <p className="text-xs text-gray-500">Get notified via email</p>
+              </div>
+            </div>
+            {/* Toggle switch */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={emailEnabled}
+              onClick={() => setEmailEnabled(!emailEnabled)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                emailEnabled ? 'bg-indigo-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  emailEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+          {/* Email input field */}
+          {emailEnabled && (
+            <div className="mt-3">
+              <input
+                type="email"
+                placeholder="your@email.com"
+                value={emailAddress}
+                onChange={(e) => setEmailAddress(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Webhook notification card */}
+        <div className="border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                <svg
+                  className="h-5 w-5 text-purple-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">Webhook</h4>
+                <p className="text-xs text-gray-500">Send to a custom URL</p>
+              </div>
+            </div>
+            {/* Toggle switch */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={webhookEnabled}
+              onClick={() => setWebhookEnabled(!webhookEnabled)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                webhookEnabled ? 'bg-indigo-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  webhookEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
+          </div>
+          {/* Webhook URL input field */}
+          {webhookEnabled && (
+            <div className="mt-3">
+              <input
+                type="url"
+                placeholder="https://your-webhook.com/endpoint"
+                value={webhookUrl}
+                onChange={(e) => setWebhookUrl(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Slack - Coming soon */}
+        <div className="border border-gray-200 rounded-lg p-4 opacity-60">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <svg
+                  className="h-5 w-5 text-gray-600"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
+                  <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">Slack</h4>
+                <p className="text-xs text-gray-500">Connect to Slack</p>
+              </div>
+            </div>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Coming soon
+            </span>
+          </div>
+        </div>
+
+        {/* SMS - Coming soon */}
+        <div className="border border-gray-200 rounded-lg p-4 opacity-60">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <svg
+                  className="h-5 w-5 text-gray-600"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"
+                  />
+                </svg>
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-gray-900">SMS</h4>
+                <p className="text-xs text-gray-500">Text notifications</p>
+              </div>
+            </div>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+              Coming soon
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* Navigation buttons */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={onBack}
+          className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          Back
+        </button>
+        <button
+          onClick={onContinue}
+          className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+        >
+          Continue
+        </button>
+      </div>
+
+      {/* Skip link */}
+      <div className="mt-4 text-center">
+        <button
+          onClick={onSkip}
+          className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Skip for now
         </button>
       </div>
     </div>
