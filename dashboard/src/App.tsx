@@ -4,6 +4,7 @@ import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
 import { SetupPage } from './pages/SetupPage';
 import { InboxPage } from './pages/InboxPage';
+import { ConversationPage } from './pages/ConversationPage';
 
 export function App() {
   return (
@@ -13,6 +14,7 @@ export function App() {
         <Route path="login" element={<LoginPage />} />
         <Route path="setup" element={<SetupPage />} />
         <Route path="inbox" element={<InboxPage />} />
+        <Route path="inbox/:conversationId" element={<ConversationPage />} />
       </Route>
     </Routes>
   );
