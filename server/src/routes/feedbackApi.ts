@@ -7,7 +7,7 @@ import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { eq, and, isNull, isNotNull, desc, asc, sql } from 'drizzle-orm';
 import { db, apiKeys, sessions, users, conversations, messages } from '../db/index.js';
-import type { ConversationStatus } from '../db/schema.js';
+import type { ConversationStatus, ConversationType } from '../db/schema.js';
 
 export const feedbackApiRoutes = new Hono();
 
@@ -65,6 +65,7 @@ function getMessagePreview(content: string, maxLength = 100): string {
  * Query params:
  * - archived: 'true' | 'false' (default: 'false')
  * - status: 'new' | 'resolved' (optional)
+ * - type: 'feedback' | 'error' (optional, filters by conversation type)
  */
 feedbackApiRoutes.get('/', async (c) => {
   const sessionCookie = getCookie(c, 'heydev_session');
@@ -83,6 +84,7 @@ feedbackApiRoutes.get('/', async (c) => {
   // Parse query params
   const archivedParam = c.req.query('archived');
   const statusParam = c.req.query('status') as ConversationStatus | undefined;
+  const typeParam = c.req.query('type') as ConversationType | undefined;
   const showArchived = archivedParam === 'true';
 
   // Build where conditions
@@ -96,6 +98,11 @@ feedbackApiRoutes.get('/', async (c) => {
 
   if (statusParam && (statusParam === 'new' || statusParam === 'resolved')) {
     conditions.push(eq(conversations.status, statusParam));
+  }
+
+  // Filter by type if provided
+  if (typeParam && (typeParam === 'feedback' || typeParam === 'error')) {
+    conditions.push(eq(conversations.type, typeParam));
   }
 
   // Fetch conversations with latest message using subquery
@@ -129,6 +136,9 @@ feedbackApiRoutes.get('/', async (c) => {
         id: conv.id,
         sessionId: conv.sessionId,
         status: conv.status,
+        type: conv.type,
+        occurrenceCount: conv.occurrenceCount,
+        lastOccurredAt: conv.lastOccurredAt,
         readAt: conv.readAt,
         archivedAt: conv.archivedAt,
         createdAt: conv.createdAt,
