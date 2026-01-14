@@ -7,6 +7,7 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 interface User {
   id: number;
   email: string;
+  setupCompletedAt: number | null;
 }
 
 export function Layout() {
@@ -77,26 +78,42 @@ export function Layout() {
             </Link>
             <nav className="flex items-center gap-4">
               {loading ? null : user ? (
-                <>
-                  <Link
-                    to="/inbox"
-                    className="text-gray-600 hover:text-gray-900 text-sm font-medium"
-                  >
-                    Inbox{unreadCount > 0 && ` (${unreadCount})`}
-                  </Link>
-                  <Link
-                    to="/setup"
-                    className="text-gray-600 hover:text-gray-900 text-sm font-medium"
-                  >
-                    Setup
-                  </Link>
+                user.setupCompletedAt === null ? (
+                  /* During setup: only show Log out */
                   <button
                     onClick={handleLogout}
                     className="text-gray-600 hover:text-gray-900 text-sm font-medium"
                   >
-                    Logout
+                    Log out
                   </button>
-                </>
+                ) : (
+                  /* After setup complete: show Inbox, Settings, Log out */
+                  <>
+                    <Link
+                      to="/inbox"
+                      className="text-gray-600 hover:text-gray-900 text-sm font-medium flex items-center gap-1"
+                    >
+                      Inbox
+                      {unreadCount > 0 && (
+                        <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                          {unreadCount}
+                        </span>
+                      )}
+                    </Link>
+                    <Link
+                      to="/setup"
+                      className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                    >
+                      Settings
+                    </Link>
+                    <button
+                      onClick={handleLogout}
+                      className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                    >
+                      Log out
+                    </button>
+                  </>
+                )
               ) : (
                 <Link
                   to="/login"
