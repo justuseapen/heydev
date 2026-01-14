@@ -302,11 +302,10 @@ export function SetupWizard({ currentStep, onStepChange }: SetupWizardProps) {
           />
         )}
 
-        {/* Step 2: Widget Installation - placeholder */}
+        {/* Step 2: Widget Installation */}
         {currentStep === 2 && (
-          <StepPlaceholder
-            title="Install the Widget"
-            description="Add the widget script to your website."
+          <Step2WidgetInstall
+            apiKey={generatedKey?.key || apiKeyInfo?.keyPrefix || 'YOUR_API_KEY'}
             onBack={() => handleStepAdvance(1)}
             onContinue={() => handleStepAdvance(3)}
           />
@@ -567,6 +566,153 @@ function Step1ApiKey({
               ? 'bg-indigo-600 text-white hover:bg-indigo-700'
               : 'bg-gray-100 text-gray-400 cursor-not-allowed'
           }`}
+        >
+          Continue
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// Step 2: Widget Installation component
+interface Step2WidgetInstallProps {
+  apiKey: string;
+  onBack: () => void;
+  onContinue: () => void;
+}
+
+function Step2WidgetInstall({ apiKey, onBack, onContinue }: Step2WidgetInstallProps) {
+  const [copied, setCopied] = useState(false);
+
+  // Widget script snippet with user's API key
+  const widgetSnippet = `<script src="https://cdn.heydev.co/widget.js" data-api-key="${apiKey}"></script>`;
+
+  const handleCopySnippet = async () => {
+    try {
+      await navigator.clipboard.writeText(widgetSnippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = widgetSnippet;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  return (
+    <div className="py-4">
+      <h3 className="text-lg font-semibold text-gray-900 mb-2 text-center">
+        Install the Widget
+      </h3>
+      <p className="text-gray-600 mb-6 text-center">
+        Add this snippet to your website to start collecting feedback.
+      </p>
+
+      {/* Code snippet with dark background */}
+      <div className="relative mb-4">
+        <div className="bg-gray-900 rounded-lg p-4 overflow-x-auto">
+          <pre className="text-sm font-mono">
+            <code className="text-gray-100">
+              <span className="text-pink-400">&lt;script</span>
+              <span className="text-gray-100"> </span>
+              <span className="text-yellow-300">src</span>
+              <span className="text-gray-100">=</span>
+              <span className="text-green-400">"https://cdn.heydev.co/widget.js"</span>
+              <span className="text-gray-100"> </span>
+              <span className="text-yellow-300">data-api-key</span>
+              <span className="text-gray-100">=</span>
+              <span className="text-green-400">"{apiKey}"</span>
+              <span className="text-pink-400">&gt;&lt;/script&gt;</span>
+            </code>
+          </pre>
+        </div>
+
+        {/* Copy button */}
+        <button
+          onClick={handleCopySnippet}
+          className="absolute top-2 right-2 bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors flex items-center gap-1.5"
+        >
+          {copied ? (
+            <>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M5 13l4 4L19 7"
+                />
+              </svg>
+              Copied!
+            </>
+          ) : (
+            <>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"
+                />
+              </svg>
+              Copy
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Installation instructions */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start gap-3">
+          <svg
+            className="h-5 w-5 text-blue-500 mt-0.5 shrink-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <p className="text-sm text-blue-800">
+            Add this snippet before the closing{' '}
+            <code className="bg-blue-100 px-1.5 py-0.5 rounded font-mono text-xs">
+              &lt;/body&gt;
+            </code>{' '}
+            tag on your website.
+          </p>
+        </div>
+      </div>
+
+      {/* Navigation buttons */}
+      <div className="flex items-center justify-center gap-4">
+        <button
+          onClick={onBack}
+          className="px-6 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        >
+          Back
+        </button>
+        <button
+          onClick={onContinue}
+          className="px-6 py-2 text-sm font-medium text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
         >
           Continue
         </button>
