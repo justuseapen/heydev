@@ -4,7 +4,9 @@
  */
 
 import { Hono } from 'hono';
+import { eq, and } from 'drizzle-orm';
 import { db, conversations, messages } from '../db/index.js';
+import crypto from 'crypto';
 
 /**
  * Error details captured from the browser
@@ -43,6 +45,41 @@ interface ErrorRequest {
 }
 
 export const errorsRoutes = new Hono();
+
+/**
+ * Normalize a stack trace for fingerprinting
+ * Removes line numbers, column numbers, and query strings that vary between deployments
+ */
+function normalizeStack(stack: string): string {
+  return stack
+    // Remove line and column numbers (e.g., :123:45)
+    .replace(/:\d+:\d+/g, ':X:X')
+    // Remove query strings in URLs (e.g., ?v=123)
+    .replace(/\?[^\s)]+/g, '')
+    // Normalize webpack chunk hashes (e.g., main.abc123.js -> main.X.js)
+    .replace(/\.[a-f0-9]{8,}\.js/gi, '.X.js')
+    // Trim whitespace
+    .trim();
+}
+
+/**
+ * Generate a fingerprint for error grouping
+ * Combines error type, message, and normalized stack trace to create a unique hash
+ */
+export function generateFingerprint(
+  type: 'exception' | 'network',
+  message: string,
+  stack?: string
+): string {
+  const parts: string[] = [type, message];
+
+  if (stack) {
+    parts.push(normalizeStack(stack));
+  }
+
+  const content = parts.join('|');
+  return crypto.createHash('sha256').update(content).digest('hex').substring(0, 32);
+}
 
 /**
  * POST /errors - Submit an error report
@@ -86,17 +123,54 @@ errorsRoutes.post('/', async (c) => {
       }
     }
 
-    // For now, just create a new conversation for each error
-    // US-003 will add fingerprinting and grouping logic
-    const [conversation] = await db
-      .insert(conversations)
-      .values({
-        apiKeyId: apiKey.id,
-        sessionId: body.session_id,
-        type: 'error',
-        lastOccurredAt: new Date().toISOString(),
-      })
-      .returning();
+    // Generate fingerprint for error grouping
+    const fingerprint = generateFingerprint(
+      body.error.type,
+      body.error.message,
+      body.error.stack
+    );
+
+    // Check for existing conversation with same fingerprint and API key
+    const [existingConversation] = await db
+      .select()
+      .from(conversations)
+      .where(
+        and(
+          eq(conversations.apiKeyId, apiKey.id),
+          eq(conversations.fingerprint, fingerprint)
+        )
+      )
+      .limit(1);
+
+    let conversation;
+
+    if (existingConversation) {
+      // Update existing conversation: increment count, update timestamp, reset status, clear readAt
+      const [updated] = await db
+        .update(conversations)
+        .set({
+          occurrenceCount: existingConversation.occurrenceCount + 1,
+          lastOccurredAt: new Date().toISOString(),
+          status: 'new',
+          readAt: null,
+        })
+        .where(eq(conversations.id, existingConversation.id))
+        .returning();
+      conversation = updated;
+    } else {
+      // Create new error conversation with fingerprint
+      const [newConversation] = await db
+        .insert(conversations)
+        .values({
+          apiKeyId: apiKey.id,
+          sessionId: body.session_id,
+          type: 'error',
+          fingerprint,
+          lastOccurredAt: new Date().toISOString(),
+        })
+        .returning();
+      conversation = newConversation;
+    }
 
     // Build message content with error details
     const messageContent = JSON.stringify({
