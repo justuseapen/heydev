@@ -189,6 +189,78 @@ authRoutes.get('/me', async (c) => {
     id: user.id,
     email: user.email,
     createdAt: user.createdAt,
+    setupStep: user.setupStep,
+    setupCompletedAt: user.setupCompletedAt,
+  });
+});
+
+/**
+ * PATCH /api/auth/setup-step
+ * Update the user's setup progress step
+ */
+authRoutes.patch('/setup-step', async (c) => {
+  const sessionId = getCookie(c, 'heydev_session');
+
+  if (!sessionId) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  // Find the session
+  const session = await db.query.sessions.findFirst({
+    where: eq(sessions.sessionId, sessionId),
+  });
+
+  if (!session) {
+    return c.json({ error: 'Invalid session' }, 401);
+  }
+
+  // Check if session is expired
+  if (new Date(session.expiresAt) < new Date()) {
+    return c.json({ error: 'Session expired' }, 401);
+  }
+
+  // Parse request body
+  const body = await c.req.json().catch(() => null);
+
+  if (!body || typeof body.step !== 'number') {
+    return c.json({ error: 'Step is required and must be a number' }, 400);
+  }
+
+  const { step } = body;
+
+  // Validate step is 1-4
+  if (step < 1 || step > 4 || !Number.isInteger(step)) {
+    return c.json({ error: 'Step must be an integer between 1 and 4' }, 400);
+  }
+
+  // Build update data
+  const updateData: { setupStep: number; setupCompletedAt?: number } = {
+    setupStep: step,
+  };
+
+  // When step is set to 4, also set setup_completed_at to current timestamp
+  if (step === 4) {
+    updateData.setupCompletedAt = Date.now();
+  }
+
+  // Update the user
+  await db
+    .update(users)
+    .set(updateData)
+    .where(eq(users.id, session.userId));
+
+  // Get updated user
+  const user = await db.query.users.findFirst({
+    where: eq(users.id, session.userId),
+  });
+
+  if (!user) {
+    return c.json({ error: 'User not found' }, 401);
+  }
+
+  return c.json({
+    setupStep: user.setupStep,
+    setupCompletedAt: user.setupCompletedAt,
   });
 });
 
