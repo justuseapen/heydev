@@ -12,6 +12,10 @@ export type MessageDirection = (typeof messageDirections)[number];
 export const conversationStatuses = ["new", "resolved"] as const;
 export type ConversationStatus = (typeof conversationStatuses)[number];
 
+// Enum-like type for conversation type
+export const conversationTypes = ["feedback", "error"] as const;
+export type ConversationType = (typeof conversationTypes)[number];
+
 // API Keys table
 export const apiKeys = sqliteTable("api_keys", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -42,6 +46,10 @@ export const conversations = sqliteTable("conversations", {
     .references(() => apiKeys.id),
   sessionId: text("session_id").notNull(),
   status: text("status", { enum: conversationStatuses }).notNull().default("new"),
+  type: text("type", { enum: conversationTypes }).notNull().default("feedback"),
+  fingerprint: text("fingerprint"),
+  occurrenceCount: integer("occurrence_count").notNull().default(1),
+  lastOccurredAt: text("last_occurred_at"),
   readAt: integer("read_at"),
   archivedAt: integer("archived_at"),
   createdAt: text("created_at")
