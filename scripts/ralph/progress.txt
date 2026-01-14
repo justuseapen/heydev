@@ -94,3 +94,12 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Inline syntax highlighting: use `<span style={{ color: '...' }}>` for code tokens
   - Use useState for temporary UI state like "Copied!" feedback
 ---
+
+## 2026-01-14 - US-011
+- What was implemented: Signup CTA with email form and magic link integration
+- Files changed: dashboard/src/pages/LandingPage.tsx
+- **Learnings for future iterations:**
+  - API_BASE from `import.meta.env.VITE_API_URL` for environment-aware API calls
+  - Use FormEvent type for form onSubmit handlers
+  - Pattern: loading/success/error state trio for async forms
+---
