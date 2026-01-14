@@ -87,6 +87,8 @@ export type NewMessage = typeof messages.$inferInsert;
 export const users = sqliteTable("users", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   email: text("email").notNull().unique(),
+  setupStep: integer("setup_step").notNull().default(1),
+  setupCompletedAt: integer("setup_completed_at"),
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
