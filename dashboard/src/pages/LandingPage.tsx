@@ -1,7 +1,13 @@
-import { useState } from 'react';
+import { useState, FormEvent } from 'react';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export function LandingPage() {
   const [copied, setCopied] = useState(false);
+  const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [success, setSuccess] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const scrollToSignup = () => {
     const signupSection = document.getElementById('signup');
@@ -27,6 +33,33 @@ export function LandingPage() {
       document.body.removeChild(textarea);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
+    }
+  };
+
+  const handleSignup = async (e: FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await fetch(`${API_BASE}/api/auth/magic-link`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send magic link');
+      }
+
+      setSuccess(true);
+      setEmail('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -136,9 +169,46 @@ export function LandingPage() {
         </div>
       </section>
 
-      {/* Placeholder for signup section - will be implemented in US-011 */}
-      <section id="signup" className="py-16 px-4">
-        {/* Signup CTA will go here */}
+      {/* Signup Section */}
+      <section id="signup" className="py-16 px-4 bg-gray-100">
+        <div className="max-w-md mx-auto text-center">
+          <h2
+            className="text-3xl font-bold text-gray-900 mb-4"
+            style={{ fontFamily: 'Georgia, serif' }}
+          >
+            Get Started
+          </h2>
+          <p className="text-gray-600 mb-8">
+            Enter your email and we'll send you a magic link to sign in.
+          </p>
+
+          {success ? (
+            <div className="bg-green-50 border border-green-200 p-4 text-green-800">
+              Check your email for a login link
+            </div>
+          ) : (
+            <form onSubmit={handleSignup} className="space-y-4">
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                required
+                className="w-full px-4 py-3 border border-gray-300 focus:outline-none focus:border-gray-900"
+              />
+              {error && (
+                <div className="text-red-600 text-sm">{error}</div>
+              )}
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full bg-gray-900 text-white px-8 py-3 font-medium hover:bg-gray-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Sending...' : 'Get Started'}
+              </button>
+            </form>
+          )}
+        </div>
       </section>
     </div>
   );
