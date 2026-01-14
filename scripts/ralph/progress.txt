@@ -158,3 +158,12 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Full-screen image modal: fixed inset-0 with bg-opacity-80
   - Collapsible sections with useState toggle
 ---
+
+## 2026-01-14 - US-018
+- What was implemented: Reply composer with send functionality
+- Files changed: server/src/routes/feedbackApi.ts, dashboard/src/pages/ConversationPage.tsx
+- **Learnings for future iterations:**
+  - Created POST /:conversationId/reply endpoint for session-auth replies
+  - Optimistic UI: append new message to state immediately after API success
+  - Textarea resize-none prevents user from resizing
+---
