@@ -33,3 +33,14 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Query params accessed via `c.req.query('param')` in Hono
   - For listing with filters, build conditions array and use `and(...conditions)`
 ---
+
+## 2026-01-14 - US-003
+- What was implemented: GET /api/feedback/:conversationId endpoint for conversation detail
+- Files changed: server/src/routes/feedbackApi.ts
+- **Learnings for future iterations:**
+  - Route params accessed via `c.req.param('paramName')` in Hono
+  - Inbound message content is JSON with text, screenshot_url, audio_url, context fields
+  - Outbound message content is plain text (the reply message)
+  - Use `asc(column)` for ascending sort order in Drizzle
+  - Extract context from first inbound message for conversation metadata
+---
