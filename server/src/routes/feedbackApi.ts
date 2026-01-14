@@ -142,6 +142,40 @@ feedbackApiRoutes.get('/', async (c) => {
 });
 
 /**
+ * GET /unread-count
+ * Get count of unread (non-archived) conversations
+ */
+feedbackApiRoutes.get('/unread-count', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+  if (!apiKey) {
+    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  }
+
+  // Count non-archived conversations where readAt is null
+  const countResult = await db
+    .select({ count: sql<number>`count(*)` })
+    .from(conversations)
+    .where(
+      and(
+        eq(conversations.apiKeyId, apiKey.id),
+        isNull(conversations.archivedAt),
+        isNull(conversations.readAt)
+      )
+    );
+
+  const count = countResult[0]?.count ?? 0;
+
+  return c.json({ count });
+});
+
+/**
  * GET /:conversationId
  * Get a single conversation with all messages
  */
