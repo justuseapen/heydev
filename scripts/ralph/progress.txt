@@ -85,3 +85,12 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Use HTML entities for unicode emojis (e.g., `&#127908;` for microphone)
   - Tailwind responsive: `grid-cols-1 md:grid-cols-2` for 1 col mobile, 2 col desktop
 ---
+
+## 2026-01-14 - US-010
+- What was implemented: Installation snippet with syntax highlighting and copy button
+- Files changed: dashboard/src/pages/LandingPage.tsx
+- **Learnings for future iterations:**
+  - Use `navigator.clipboard.writeText()` for clipboard, with `document.execCommand('copy')` fallback
+  - Inline syntax highlighting: use `<span style={{ color: '...' }}>` for code tokens
+  - Use useState for temporary UI state like "Copied!" feedback
+---
