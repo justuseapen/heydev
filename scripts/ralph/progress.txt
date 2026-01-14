@@ -77,3 +77,11 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Use `document.getElementById()` and `scrollIntoView({ behavior: 'smooth' })` for scroll-to-section
   - Vintage-inspired design uses Georgia serif for headings, system fonts elsewhere
 ---
+
+## 2026-01-14 - US-009
+- What was implemented: Features section with 4 feature cards
+- Files changed: dashboard/src/pages/LandingPage.tsx
+- **Learnings for future iterations:**
+  - Use HTML entities for unicode emojis (e.g., `&#127908;` for microphone)
+  - Tailwind responsive: `grid-cols-1 md:grid-cols-2` for 1 col mobile, 2 col desktop
+---
