@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { WebhookConfigModal } from '../components/WebhookConfigModal';
 import { EmailConfigModal } from '../components/EmailConfigModal';
+import { SetupWizard } from '../components/SetupWizard';
 
 // In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -10,6 +11,8 @@ interface User {
   id: number;
   email: string;
   createdAt: string;
+  setupStep: number;
+  setupCompletedAt: number | null;
 }
 
 interface ApiKeyInfo {
@@ -131,7 +134,9 @@ export function SetupPage() {
   const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | undefined>(undefined);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailConfig, setEmailConfig] = useState<EmailConfig | undefined>(undefined);
+  const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -147,6 +152,17 @@ export function SetupPage() {
 
         const userData = await response.json();
         setUser(userData);
+
+        // Set current step from URL param or from user's saved step
+        const stepParam = searchParams.get('step');
+        if (stepParam) {
+          const stepNum = parseInt(stepParam, 10);
+          if (stepNum >= 1 && stepNum <= 4) {
+            setCurrentStep(stepNum);
+          }
+        } else if (userData.setupStep) {
+          setCurrentStep(userData.setupStep);
+        }
 
         // Fetch API key info
         const keyResponse = await fetch(`${API_URL}/api/keys`, {
@@ -175,7 +191,7 @@ export function SetupPage() {
     };
 
     checkAuth();
-  }, [navigate]);
+  }, [navigate, searchParams]);
 
   const handleLogout = async () => {
     try {
@@ -372,6 +388,23 @@ export function SetupPage() {
     );
   };
 
+  // Handle step changes from the wizard
+  const handleStepChange = (step: number) => {
+    setCurrentStep(step);
+    setSearchParams({ step: step.toString() });
+    // If step 4 is completed (setup finished), refresh user data
+    if (step === 4) {
+      // Re-fetch user to get updated setupCompletedAt
+      fetch(`${API_URL}/api/auth/me`, { credentials: 'include' })
+        .then(res => res.json())
+        .then(userData => setUser(userData))
+        .catch(() => {});
+    }
+  };
+
+  // Check if user is in wizard mode (setup not completed)
+  const isWizardMode = user && user.setupCompletedAt === null;
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -399,10 +432,23 @@ export function SetupPage() {
     );
   }
 
+  // Render wizard mode for users who haven't completed setup
+  if (isWizardMode) {
+    return (
+      <div className="py-8">
+        <SetupWizard
+          currentStep={currentStep}
+          onStepChange={handleStepChange}
+        />
+      </div>
+    );
+  }
+
+  // Render settings view for users who have completed setup
   return (
     <div className="max-w-2xl mx-auto py-8">
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-3xl font-bold text-gray-900">Setup</h1>
+        <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
         <div className="flex items-center gap-4">
           <span className="text-sm text-gray-600">{user?.email}</span>
           <button
@@ -414,7 +460,7 @@ export function SetupPage() {
         </div>
       </div>
       <p className="text-gray-600 mb-8">
-        Configure your HeyDev widget and notification channels.
+        Manage your HeyDev widget and notification settings.
       </p>
 
       <div className="space-y-6">
