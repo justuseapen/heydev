@@ -11,6 +11,7 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
 - Session auth: use `getCookie(c, 'heydev_session')` then lookup session/user (pattern in keys.ts, feedbackApi.ts)
 - Session-auth routes mount directly on app; API-key-auth routes mount under `api` Hono instance
 - Use `sql<number>\`count(*)\`` template for aggregations in Drizzle
+- In Hono, static routes (e.g., /unread-count) must be defined BEFORE parameterized routes (e.g., /:id)
 ---
 
 ## 2026-01-14 - US-001
@@ -57,4 +58,12 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Timestamps stored as Unix seconds: `Math.floor(Date.now() / 1000)`
   - Parse JSON body with `c.req.json<TypeHint>()` in Hono
   - Created helper `getConversationForUser()` to DRY up ownership checks
+---
+
+## 2026-01-14 - US-007
+- What was implemented: GET /api/feedback/unread-count endpoint
+- Files changed: server/src/routes/feedbackApi.ts
+- **Learnings for future iterations:**
+  - Static routes (like /unread-count) must be defined BEFORE parameterized routes (like /:conversationId) in Hono
+  - Use `and()` with multiple `isNull()` conditions for compound WHERE clauses
 ---
