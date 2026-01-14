@@ -150,15 +150,118 @@ export function ConversationPage() {
     }
   };
 
+  const handleStatusChange = async (newStatus: 'new' | 'resolved') => {
+    if (!conversationId) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/feedback/${conversationId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to update status');
+      }
+
+      setConversation((prev) =>
+        prev ? { ...prev, status: newStatus } : prev
+      );
+    } catch (err) {
+      console.error('Status update error:', err);
+    }
+  };
+
+  const handleArchive = async () => {
+    if (!conversationId) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/feedback/${conversationId}/archive`, {
+        method: 'PATCH',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to archive');
+      }
+
+      // Redirect to inbox after archiving
+      navigate('/inbox');
+    } catch (err) {
+      console.error('Archive error:', err);
+    }
+  };
+
+  const handleUnarchive = async () => {
+    if (!conversationId) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/api/feedback/${conversationId}/unarchive`, {
+        method: 'PATCH',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to unarchive');
+      }
+
+      setConversation((prev) =>
+        prev ? { ...prev, archivedAt: null } : prev
+      );
+    } catch (err) {
+      console.error('Unarchive error:', err);
+    }
+  };
+
   return (
     <div>
-      {/* Back link */}
-      <Link
-        to="/inbox"
-        className="inline-block mb-4 text-gray-600 hover:text-gray-900 text-sm"
-      >
-        &larr; Back to Inbox
-      </Link>
+      {/* Header with back link and actions */}
+      <div className="flex items-center justify-between mb-4">
+        <Link
+          to="/inbox"
+          className="text-gray-600 hover:text-gray-900 text-sm"
+        >
+          &larr; Back to Inbox
+        </Link>
+
+        {/* Action buttons */}
+        <div className="flex items-center gap-2">
+          {/* Status buttons */}
+          {conversation.status === 'new' ? (
+            <button
+              onClick={() => handleStatusChange('resolved')}
+              className="px-4 py-2 text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition-colors"
+            >
+              Mark Resolved
+            </button>
+          ) : (
+            <button
+              onClick={() => handleStatusChange('new')}
+              className="px-4 py-2 text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+              Reopen
+            </button>
+          )}
+
+          {/* Archive/Unarchive buttons */}
+          {conversation.archivedAt ? (
+            <button
+              onClick={handleUnarchive}
+              className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Unarchive
+            </button>
+          ) : conversation.status === 'resolved' ? (
+            <button
+              onClick={handleArchive}
+              className="px-4 py-2 text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Archive
+            </button>
+          ) : null}
+        </div>
+      </div>
 
       {/* Context metadata */}
       {ctx && (
