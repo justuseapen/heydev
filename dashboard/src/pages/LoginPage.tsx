@@ -1,5 +1,5 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 
 // In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -124,10 +124,13 @@ export function LoginPage() {
     <div className="max-w-md mx-auto py-16">
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-          Sign in to HeyDev
+          Welcome back
         </h1>
         <p className="text-gray-600 text-center mb-8">
-          Enter your email to receive a magic link
+          New to HeyDev?{' '}
+          <Link to="/" className="text-indigo-600 hover:text-indigo-700 font-medium">
+            Sign up free
+          </Link>
         </p>
 
         {error && (

@@ -81,7 +81,7 @@ export function LandingPage() {
           onClick={scrollToSignup}
           className="bg-gray-900 text-white px-8 py-4 text-lg font-medium hover:bg-gray-800 transition-colors"
         >
-          Get Started
+          Get Started Free
         </button>
       </section>
 
@@ -177,7 +177,7 @@ export function LandingPage() {
             className="text-3xl font-bold text-gray-900 mb-4"
             style={{ fontFamily: 'Georgia, serif' }}
           >
-            Get Started
+            Start collecting feedback today
           </h2>
           <p className="text-gray-600 mb-8">
             Enter your email and we'll send you a magic link to sign in.

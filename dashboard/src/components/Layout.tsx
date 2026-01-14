@@ -102,7 +102,7 @@ export function Layout() {
                   to="/login"
                   className="text-gray-600 hover:text-gray-900 text-sm font-medium"
                 >
-                  Login
+                  Log In
                 </Link>
               )}
             </nav>
