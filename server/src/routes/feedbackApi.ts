@@ -5,7 +5,7 @@
 
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
-import { eq, and, isNull, isNotNull, desc, sql } from 'drizzle-orm';
+import { eq, and, isNull, isNotNull, desc, asc, sql } from 'drizzle-orm';
 import { db, apiKeys, sessions, users, conversations, messages } from '../db/index.js';
 import type { ConversationStatus } from '../db/schema.js';
 
@@ -139,4 +139,97 @@ feedbackApiRoutes.get('/', async (c) => {
   );
 
   return c.json(results);
+});
+
+/**
+ * GET /:conversationId
+ * Get a single conversation with all messages
+ */
+feedbackApiRoutes.get('/:conversationId', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  // Get user's API key
+  const apiKey = await getUserApiKey(user.id);
+  if (!apiKey) {
+    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  }
+
+  const conversationId = parseInt(c.req.param('conversationId'), 10);
+  if (isNaN(conversationId)) {
+    return c.json({ error: 'Invalid conversation ID' }, 400);
+  }
+
+  // Fetch conversation
+  const conversation = await db.query.conversations.findFirst({
+    where: and(
+      eq(conversations.id, conversationId),
+      eq(conversations.apiKeyId, apiKey.id)
+    ),
+  });
+
+  if (!conversation) {
+    return c.json({ error: 'Conversation not found' }, 404);
+  }
+
+  // Fetch all messages for this conversation in chronological order
+  const conversationMessages = await db.query.messages.findMany({
+    where: eq(messages.conversationId, conversationId),
+    orderBy: [asc(messages.createdAt)],
+  });
+
+  // Extract context from first inbound message
+  let context = null;
+  const firstInboundMessage = conversationMessages.find(m => m.direction === 'inbound');
+  if (firstInboundMessage) {
+    try {
+      const parsed = JSON.parse(firstInboundMessage.content);
+      context = parsed.context || null;
+    } catch {
+      // Content not JSON, no context available
+    }
+  }
+
+  // Format messages for response
+  const formattedMessages = conversationMessages.map((msg) => {
+    let text = msg.content;
+    let screenshotUrl = null;
+    let audioUrl = null;
+
+    // Parse JSON content for inbound messages
+    if (msg.direction === 'inbound') {
+      try {
+        const parsed = JSON.parse(msg.content);
+        text = parsed.text || '';
+        screenshotUrl = parsed.screenshot_url || null;
+        audioUrl = parsed.audio_url || null;
+      } catch {
+        // Content not JSON, use as-is
+      }
+    }
+
+    return {
+      id: msg.id,
+      direction: msg.direction,
+      text,
+      screenshotUrl,
+      audioUrl,
+      createdAt: msg.createdAt,
+    };
+  });
+
+  return c.json({
+    id: conversation.id,
+    sessionId: conversation.sessionId,
+    status: conversation.status,
+    readAt: conversation.readAt,
+    archivedAt: conversation.archivedAt,
+    createdAt: conversation.createdAt,
+    context,
+    messages: formattedMessages,
+  });
 });
