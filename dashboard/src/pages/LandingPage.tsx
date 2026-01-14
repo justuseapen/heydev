@@ -1,8 +1,32 @@
+import { useState } from 'react';
+
 export function LandingPage() {
+  const [copied, setCopied] = useState(false);
+
   const scrollToSignup = () => {
     const signupSection = document.getElementById('signup');
     if (signupSection) {
       signupSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
+  const installSnippet = '<script src="https://cdn.heydev.io/widget.js" data-key="YOUR_API_KEY"></script>';
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(installSnippet);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Fallback for older browsers
+      const textarea = document.createElement('textarea');
+      textarea.value = installSnippet;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     }
   };
 
@@ -65,6 +89,49 @@ export function LandingPage() {
                 Reply to users directly. They'll see your response right in your app.
               </p>
             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Installation Section */}
+      <section className="py-16 px-4">
+        <div className="max-w-2xl mx-auto text-center">
+          <h2
+            className="text-3xl font-bold text-gray-900 mb-4"
+            style={{ fontFamily: 'Georgia, serif' }}
+          >
+            Add one line to your site
+          </h2>
+          <p className="text-gray-600 mb-8">
+            That's it. No npm install, no build step, no configuration files.
+          </p>
+          <div className="relative">
+            <pre
+              className="bg-gray-900 text-left p-4 overflow-x-auto"
+              style={{ fontFamily: 'Menlo, Monaco, Consolas, monospace' }}
+            >
+              <code>
+                <span style={{ color: '#9CA3AF' }}>&lt;</span>
+                <span style={{ color: '#F87171' }}>script</span>
+                <span style={{ color: '#9CA3AF' }}> </span>
+                <span style={{ color: '#FBBF24' }}>src</span>
+                <span style={{ color: '#9CA3AF' }}>=</span>
+                <span style={{ color: '#34D399' }}>"https://cdn.heydev.io/widget.js"</span>
+                <span style={{ color: '#9CA3AF' }}> </span>
+                <span style={{ color: '#FBBF24' }}>data-key</span>
+                <span style={{ color: '#9CA3AF' }}>=</span>
+                <span style={{ color: '#34D399' }}>"YOUR_API_KEY"</span>
+                <span style={{ color: '#9CA3AF' }}>&gt;&lt;/</span>
+                <span style={{ color: '#F87171' }}>script</span>
+                <span style={{ color: '#9CA3AF' }}>&gt;</span>
+              </code>
+            </pre>
+            <button
+              onClick={copyToClipboard}
+              className="absolute top-2 right-2 bg-gray-700 text-white px-3 py-1 text-sm hover:bg-gray-600 transition-colors"
+            >
+              {copied ? 'Copied!' : 'Copy'}
+            </button>
           </div>
         </div>
       </section>
