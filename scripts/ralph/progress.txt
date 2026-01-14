@@ -8,6 +8,9 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
 - Use `text("column", { enum: enumArray })` for enum columns with `notNull().default("value")` for defaults
 - Use `integer("column")` for nullable timestamp columns (null = not set)
 - Export type constants like `conversationStatuses` as const arrays for type safety
+- Session auth: use `getCookie(c, 'heydev_session')` then lookup session/user (pattern in keys.ts, feedbackApi.ts)
+- Session-auth routes mount directly on app; API-key-auth routes mount under `api` Hono instance
+- Use `sql<number>\`count(*)\`` template for aggregations in Drizzle
 ---
 
 ## 2026-01-14 - US-001
@@ -18,4 +21,15 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Timestamps are stored as integers for readAt/archivedAt (Unix timestamps)
   - Status uses text with enum constraint for type safety
   - Added ConversationStatus type export for use in other files
+---
+
+## 2026-01-14 - US-002
+- What was implemented: GET /api/feedback endpoint for listing conversations
+- Files changed: server/src/routes/feedbackApi.ts, server/src/index.ts
+- **Learnings for future iterations:**
+  - Session auth pattern: use `getCookie(c, 'heydev_session')` then lookup session/user
+  - Session-auth routes are mounted directly on app, API-key-auth routes mount under `api` Hono instance
+  - Use `sql<number>\`count(*)\`` template for aggregations in Drizzle
+  - Query params accessed via `c.req.query('param')` in Hono
+  - For listing with filters, build conditions array and use `and(...conditions)`
 ---
