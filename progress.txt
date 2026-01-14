@@ -980,3 +980,24 @@ Branch: ralph/heydev-feedback-widget
   - FOCUSABLE_SELECTOR: button:not([disabled]), [href], input:not([disabled]), etc.
 
 ---
+
+## Phase 2 - Feedback Inbox & Landing Page
+
+Branch: ralph/phase2-inbox-landing
+
+---
+
+## 2026-01-14 - US-001: Add status fields to conversations table
+- What was implemented:
+  - Verified that status fields already exist in conversations table from previous phase
+  - `status` column with enum ('new', 'resolved') and default 'new'
+  - `readAt` column (nullable integer timestamp)
+  - `archivedAt` column (nullable integer timestamp)
+  - `conversationStatuses` type exported from schema.ts
+- Files changed:
+  - server/src/db/schema.ts (already contained all required columns)
+- **Learnings for future iterations:**
+  - Schema was updated during Phase 1 development, no additional changes needed
+  - Typecheck passes confirming schema is valid
+
+---
