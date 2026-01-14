@@ -1,6 +1,56 @@
-import { Outlet, Link } from 'react-router-dom';
+import { Outlet, Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+
+interface User {
+  id: number;
+  email: string;
+}
 
 export function Layout() {
+  const [user, setUser] = useState<User | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    // Check if user is authenticated
+    fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' })
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('Not authenticated');
+      })
+      .then((data) => {
+        setUser(data);
+        // Fetch unread count if authenticated
+        return fetch(`${API_BASE}/api/feedback/unread-count`, { credentials: 'include' });
+      })
+      .then((res) => {
+        if (res.ok) return res.json();
+        return { count: 0 };
+      })
+      .then((data) => {
+        setUnreadCount(data.count || 0);
+      })
+      .catch(() => {
+        setUser(null);
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }, []);
+
+  const handleLogout = async () => {
+    await fetch(`${API_BASE}/api/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    setUser(null);
+    setUnreadCount(0);
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white border-b border-gray-200">
@@ -25,12 +75,35 @@ export function Layout() {
               <span className="text-xl font-bold text-gray-900">HeyDev</span>
             </Link>
             <nav className="flex items-center gap-4">
-              <Link
-                to="/login"
-                className="text-gray-600 hover:text-gray-900 text-sm font-medium"
-              >
-                Login
-              </Link>
+              {loading ? null : user ? (
+                <>
+                  <Link
+                    to="/inbox"
+                    className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  >
+                    Inbox{unreadCount > 0 && ` (${unreadCount})`}
+                  </Link>
+                  <Link
+                    to="/setup"
+                    className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  >
+                    Setup
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
+                <Link
+                  to="/login"
+                  className="text-gray-600 hover:text-gray-900 text-sm font-medium"
+                >
+                  Login
+                </Link>
+              )}
             </nav>
           </div>
         </div>
