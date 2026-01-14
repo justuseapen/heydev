@@ -131,3 +131,11 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Chain fetch calls: auth check -> unread count (only if authenticated)
   - useNavigate hook for programmatic navigation after logout
 ---
+
+## 2026-01-14 - US-015
+- What was implemented: InboxPage with tabs and auth redirect
+- Files changed: dashboard/src/pages/InboxPage.tsx, dashboard/src/App.tsx
+- **Learnings for future iterations:**
+  - Pattern for protected pages: useEffect auth check -> redirect if not authenticated
+  - Tabs pattern: useState for tab state, conditional border styling for active tab
+---
