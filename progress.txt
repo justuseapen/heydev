@@ -1001,3 +1001,24 @@ Branch: ralph/phase2-inbox-landing
   - Typecheck passes confirming schema is valid
 
 ---
+
+## 2026-01-14 - US-002: API endpoint for listing feedback conversations
+- What was implemented:
+  - New feedbackApiRoutes in server/src/routes/feedbackApi.ts
+  - GET /api/feedback endpoint for dashboard inbox (session auth)
+  - Returns conversations with: id, sessionId, status, readAt, archivedAt, createdAt, latestMessage, messageCount
+  - Query params: archived=true|false (default false), status=new|resolved (optional)
+  - Sorted by createdAt descending (newest first)
+  - Uses getAuthenticatedUser() pattern from keys.ts
+  - getMessagePreview() extracts text from JSON content (inbound) or plain text (outbound)
+- Files changed:
+  - server/src/routes/feedbackApi.ts (new route file)
+  - server/src/index.ts (mounted feedbackApiRoutes at /api/feedback)
+- **Learnings for future iterations:**
+  - Session-auth routes mounted directly on `app` before protected `api` routes
+  - GET /api/feedback uses session auth, POST /api/feedback uses API key auth (different route files)
+  - Use drizzle sql template for count aggregation: sql<number>`count(*)`
+  - Message content is JSON for inbound (with text, context), plain text for outbound
+  - Use try/catch when parsing JSON content to handle both formats gracefully
+
+---
