@@ -14,8 +14,11 @@ interface Conversation {
   messageCount: number;
 }
 
+type TypeFilter = 'all' | 'feedback' | 'error';
+
 interface FeedbackListProps {
   archived: boolean;
+  typeFilter?: TypeFilter;
 }
 
 function formatRelativeTime(dateString: string): string {
@@ -33,7 +36,7 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-export function FeedbackList({ archived }: FeedbackListProps) {
+export function FeedbackList({ archived, typeFilter = 'all' }: FeedbackListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,7 +45,12 @@ export function FeedbackList({ archived }: FeedbackListProps) {
     setLoading(true);
     setError(null);
 
-    fetch(`${API_BASE}/api/feedback?archived=${archived}`, { credentials: 'include' })
+    const params = new URLSearchParams({ archived: String(archived) });
+    if (typeFilter !== 'all') {
+      params.set('type', typeFilter);
+    }
+
+    fetch(`${API_BASE}/api/feedback?${params}`, { credentials: 'include' })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch feedback');
         return res.json();
@@ -56,7 +64,7 @@ export function FeedbackList({ archived }: FeedbackListProps) {
       .finally(() => {
         setLoading(false);
       });
-  }, [archived]);
+  }, [archived, typeFilter]);
 
   if (loading) {
     return (

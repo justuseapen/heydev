@@ -5,9 +5,11 @@ import { FeedbackList } from '../components/FeedbackList';
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 type Tab = 'active' | 'archived';
+type TypeFilter = 'all' | 'feedback' | 'error';
 
 export function InboxPage() {
   const [tab, setTab] = useState<Tab>('active');
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
@@ -74,8 +76,25 @@ export function InboxPage() {
         </nav>
       </div>
 
+      {/* Type filter */}
+      <div className="flex gap-2 mb-6">
+        {(['all', 'feedback', 'error'] as const).map((filter) => (
+          <button
+            key={filter}
+            onClick={() => setTypeFilter(filter)}
+            className={`px-3 py-1.5 text-sm font-medium rounded transition-colors ${
+              typeFilter === filter
+                ? 'bg-gray-900 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            {filter === 'all' ? 'All' : filter === 'feedback' ? 'Feedback' : 'Errors'}
+          </button>
+        ))}
+      </div>
+
       {/* Feedback list */}
-      <FeedbackList archived={tab === 'archived'} />
+      <FeedbackList archived={tab === 'archived'} typeFilter={typeFilter} />
     </div>
   );
 }
