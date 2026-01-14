@@ -233,3 +233,194 @@ feedbackApiRoutes.get('/:conversationId', async (c) => {
     messages: formattedMessages,
   });
 });
+
+/**
+ * Helper to get and verify conversation ownership
+ */
+async function getConversationForUser(conversationId: number, apiKeyId: number) {
+  return db.query.conversations.findFirst({
+    where: and(
+      eq(conversations.id, conversationId),
+      eq(conversations.apiKeyId, apiKeyId)
+    ),
+  });
+}
+
+/**
+ * PATCH /:conversationId/read
+ * Mark a conversation as read (sets readAt to current timestamp)
+ */
+feedbackApiRoutes.patch('/:conversationId/read', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+  if (!apiKey) {
+    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  }
+
+  const conversationId = parseInt(c.req.param('conversationId'), 10);
+  if (isNaN(conversationId)) {
+    return c.json({ error: 'Invalid conversation ID' }, 400);
+  }
+
+  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  if (!conversation) {
+    return c.json({ error: 'Conversation not found' }, 404);
+  }
+
+  // Update readAt to current timestamp
+  const [updated] = await db
+    .update(conversations)
+    .set({ readAt: Math.floor(Date.now() / 1000) })
+    .where(eq(conversations.id, conversationId))
+    .returning();
+
+  return c.json({
+    id: updated.id,
+    sessionId: updated.sessionId,
+    status: updated.status,
+    readAt: updated.readAt,
+    archivedAt: updated.archivedAt,
+    createdAt: updated.createdAt,
+  });
+});
+
+/**
+ * PATCH /:conversationId/status
+ * Update conversation status (new | resolved)
+ */
+feedbackApiRoutes.patch('/:conversationId/status', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+  if (!apiKey) {
+    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  }
+
+  const conversationId = parseInt(c.req.param('conversationId'), 10);
+  if (isNaN(conversationId)) {
+    return c.json({ error: 'Invalid conversation ID' }, 400);
+  }
+
+  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  if (!conversation) {
+    return c.json({ error: 'Conversation not found' }, 404);
+  }
+
+  // Parse and validate body
+  const body = await c.req.json<{ status: ConversationStatus }>();
+  if (!body.status || (body.status !== 'new' && body.status !== 'resolved')) {
+    return c.json({ error: "Invalid status. Must be 'new' or 'resolved'" }, 400);
+  }
+
+  const [updated] = await db
+    .update(conversations)
+    .set({ status: body.status })
+    .where(eq(conversations.id, conversationId))
+    .returning();
+
+  return c.json({
+    id: updated.id,
+    sessionId: updated.sessionId,
+    status: updated.status,
+    readAt: updated.readAt,
+    archivedAt: updated.archivedAt,
+    createdAt: updated.createdAt,
+  });
+});
+
+/**
+ * PATCH /:conversationId/archive
+ * Archive a conversation (sets archivedAt to current timestamp)
+ */
+feedbackApiRoutes.patch('/:conversationId/archive', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+  if (!apiKey) {
+    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  }
+
+  const conversationId = parseInt(c.req.param('conversationId'), 10);
+  if (isNaN(conversationId)) {
+    return c.json({ error: 'Invalid conversation ID' }, 400);
+  }
+
+  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  if (!conversation) {
+    return c.json({ error: 'Conversation not found' }, 404);
+  }
+
+  const [updated] = await db
+    .update(conversations)
+    .set({ archivedAt: Math.floor(Date.now() / 1000) })
+    .where(eq(conversations.id, conversationId))
+    .returning();
+
+  return c.json({
+    id: updated.id,
+    sessionId: updated.sessionId,
+    status: updated.status,
+    readAt: updated.readAt,
+    archivedAt: updated.archivedAt,
+    createdAt: updated.createdAt,
+  });
+});
+
+/**
+ * PATCH /:conversationId/unarchive
+ * Unarchive a conversation (sets archivedAt to null)
+ */
+feedbackApiRoutes.patch('/:conversationId/unarchive', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+  if (!apiKey) {
+    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  }
+
+  const conversationId = parseInt(c.req.param('conversationId'), 10);
+  if (isNaN(conversationId)) {
+    return c.json({ error: 'Invalid conversation ID' }, 400);
+  }
+
+  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  if (!conversation) {
+    return c.json({ error: 'Conversation not found' }, 404);
+  }
+
+  const [updated] = await db
+    .update(conversations)
+    .set({ archivedAt: null })
+    .where(eq(conversations.id, conversationId))
+    .returning();
+
+  return c.json({
+    id: updated.id,
+    sessionId: updated.sessionId,
+    status: updated.status,
+    readAt: updated.readAt,
+    archivedAt: updated.archivedAt,
+    createdAt: updated.createdAt,
+  });
+});
