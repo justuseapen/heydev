@@ -12,6 +12,8 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
 - Session-auth routes mount directly on app; API-key-auth routes mount under `api` Hono instance
 - Use `sql<number>\`count(*)\`` template for aggregations in Drizzle
 - In Hono, static routes (e.g., /unread-count) must be defined BEFORE parameterized routes (e.g., /:id)
+- Dashboard API calls: use `credentials: 'include'` with fetch to send session cookies
+- Dashboard API base: `import.meta.env.VITE_API_URL || 'http://localhost:3000'`
 ---
 
 ## 2026-01-14 - US-001
@@ -118,4 +120,14 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
 - **Learnings for future iterations:**
   - React Router: use `<Route index element={...} />` for the default route within a parent
   - Delete unused components to keep codebase clean
+---
+
+## 2026-01-14 - US-014
+- What was implemented: Auth-aware navigation with unread count badge
+- Files changed: dashboard/src/components/Layout.tsx
+- **Learnings for future iterations:**
+  - Use `credentials: 'include'` with fetch to send cookies cross-origin
+  - Check auth on mount with /api/auth/me endpoint
+  - Chain fetch calls: auth check -> unread count (only if authenticated)
+  - useNavigate hook for programmatic navigation after logout
 ---
