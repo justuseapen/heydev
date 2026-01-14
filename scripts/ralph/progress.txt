@@ -111,3 +111,11 @@ Feature: Phase 2 - Feedback Inbox & Landing Page
   - Use `new Date().getFullYear()` for dynamic copyright year
   - Always add `rel="noopener noreferrer"` with `target="_blank"` for security
 ---
+
+## 2026-01-14 - US-013
+- What was implemented: Updated routing to use LandingPage as homepage
+- Files changed: dashboard/src/App.tsx, dashboard/src/pages/HomePage.tsx (deleted)
+- **Learnings for future iterations:**
+  - React Router: use `<Route index element={...} />` for the default route within a parent
+  - Delete unused components to keep codebase clean
+---
