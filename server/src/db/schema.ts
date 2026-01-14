@@ -8,6 +8,10 @@ export type ChannelType = (typeof channelTypes)[number];
 export const messageDirections = ["inbound", "outbound"] as const;
 export type MessageDirection = (typeof messageDirections)[number];
 
+// Enum-like type for conversation status
+export const conversationStatuses = ["new", "resolved"] as const;
+export type ConversationStatus = (typeof conversationStatuses)[number];
+
 // API Keys table
 export const apiKeys = sqliteTable("api_keys", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -37,6 +41,9 @@ export const conversations = sqliteTable("conversations", {
     .notNull()
     .references(() => apiKeys.id),
   sessionId: text("session_id").notNull(),
+  status: text("status", { enum: conversationStatuses }).notNull().default("new"),
+  readAt: integer("read_at"),
+  archivedAt: integer("archived_at"),
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
