@@ -29,6 +29,8 @@ import { submitError } from './services/submitError';
  * - data-endpoint: Backend endpoint URL (default: https://api.heydev.io)
  * - data-theme: 'light', 'dark', or 'auto' (default: 'auto')
  * - data-error-tracking: 'true' to enable automatic error capture (default: 'false')
+ * - data-capture-exceptions: 'true'/'false' to capture JavaScript exceptions (default: 'true' when error-tracking enabled)
+ * - data-capture-network: 'true'/'false' to capture network errors (default: 'true' when error-tracking enabled)
  */
 interface WidgetConfig {
   /** API key for authentication (required) */
@@ -39,6 +41,10 @@ interface WidgetConfig {
   theme: Theme;
   /** Whether error tracking is enabled */
   errorTracking: boolean;
+  /** Whether to capture JavaScript exceptions (default: true when error-tracking enabled) */
+  captureExceptions: boolean;
+  /** Whether to capture network errors (default: true when error-tracking enabled) */
+  captureNetwork: boolean;
 }
 
 /** The HeyDev widget public API */
@@ -122,11 +128,25 @@ function getConfigFromScript(): WidgetConfig | null {
   const errorTrackingAttr = script.getAttribute('data-error-tracking');
   const errorTracking = errorTrackingAttr === 'true';
 
+  // Parse capture-exceptions attribute (default: true when error-tracking enabled)
+  // Allows explicit override via 'true' or 'false' string values
+  const captureExceptionsAttr = script.getAttribute('data-capture-exceptions');
+  const captureExceptions =
+    captureExceptionsAttr === 'false' ? false : captureExceptionsAttr === 'true' ? true : errorTracking;
+
+  // Parse capture-network attribute (default: true when error-tracking enabled)
+  // Allows explicit override via 'true' or 'false' string values
+  const captureNetworkAttr = script.getAttribute('data-capture-network');
+  const captureNetwork =
+    captureNetworkAttr === 'false' ? false : captureNetworkAttr === 'true' ? true : errorTracking;
+
   return {
     apiKey,
     endpoint,
     theme,
     errorTracking,
+    captureExceptions,
+    captureNetwork,
   };
 }
 
@@ -179,9 +199,12 @@ function initWidget(config: WidgetConfig): HeyDevWidget {
     });
   };
 
-  // Install error tracking if enabled
-  if (config.errorTracking) {
+  // Install error tracking based on configuration
+  // captureExceptions and captureNetwork can be individually enabled/disabled
+  if (config.captureExceptions) {
     installErrorCapture(handleCapturedError);
+  }
+  if (config.captureNetwork) {
     installNetworkCapture(handleCapturedError, config.endpoint);
   }
 
