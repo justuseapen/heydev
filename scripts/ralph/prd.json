@@ -1,0 +1,335 @@
+{
+  "project": "HeyDev",
+  "branchName": "ralph/phase2-inbox-landing",
+  "description": "HeyDev Phase 2 - Feedback Inbox dashboard and marketing landing page with vintage-inspired design",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add status fields to conversations table",
+      "description": "As a developer, I need conversation status stored in the database.",
+      "acceptanceCriteria": [
+        "Add 'status' column to conversations: 'new' | 'resolved' (default 'new')",
+        "Add 'readAt' column (nullable integer timestamp, null = unread)",
+        "Add 'archivedAt' column (nullable integer timestamp, null = not archived)",
+        "Update schema.ts with new columns",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": ""
+    },
+    {
+      "id": "US-002",
+      "title": "API endpoint for listing feedback conversations",
+      "description": "As a system, I need an endpoint to fetch conversations with messages.",
+      "acceptanceCriteria": [
+        "GET /api/feedback returns conversations for authenticated user's API key",
+        "Response includes: id, sessionId, status, readAt, archivedAt, createdAt, latestMessage (text preview), messageCount",
+        "Query params: archived=true|false (default false), status=new|resolved (optional)",
+        "Sorted by createdAt descending (newest first)",
+        "Requires session authentication (reuse pattern from /api/keys)",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-003",
+      "title": "API endpoint for single conversation detail",
+      "description": "As a system, I need an endpoint to fetch one conversation with all messages.",
+      "acceptanceCriteria": [
+        "GET /api/feedback/:conversationId returns full conversation",
+        "Response includes: all messages with direction/content/createdAt, conversation metadata, context from first inbound message",
+        "Returns 404 if conversation doesn't exist or doesn't belong to user",
+        "Requires session authentication",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-004",
+      "title": "API endpoint for marking conversation as read",
+      "description": "As a system, I need to mark conversations as read.",
+      "acceptanceCriteria": [
+        "PATCH /api/feedback/:conversationId/read sets readAt to current timestamp",
+        "Returns updated conversation object",
+        "Requires session authentication",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-005",
+      "title": "API endpoint for conversation status changes",
+      "description": "As a system, I need to update conversation status.",
+      "acceptanceCriteria": [
+        "PATCH /api/feedback/:conversationId/status accepts { status: 'new' | 'resolved' }",
+        "Returns updated conversation object",
+        "Requires session authentication",
+        "Typecheck passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-006",
+      "title": "API endpoints for archive/unarchive",
+      "description": "As a system, I need to archive and unarchive conversations.",
+      "acceptanceCriteria": [
+        "PATCH /api/feedback/:conversationId/archive sets archivedAt to current timestamp",
+        "PATCH /api/feedback/:conversationId/unarchive sets archivedAt to null",
+        "Both return updated conversation object",
+        "Requires session authentication",
+        "Typecheck passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-007",
+      "title": "API endpoint for unread count",
+      "description": "As a system, I need an endpoint to get unread conversation count.",
+      "acceptanceCriteria": [
+        "GET /api/feedback/unread-count returns { count: number }",
+        "Count includes only non-archived conversations where readAt is null",
+        "Requires session authentication",
+        "Typecheck passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-008",
+      "title": "Landing page hero section component",
+      "description": "As a visitor, I want to immediately understand what HeyDev does.",
+      "acceptanceCriteria": [
+        "New LandingPage.tsx component in dashboard/src/pages/",
+        "Hero section with headline: 'Frictionless feedback for your web app'",
+        "Subheadline with 1-sentence value prop",
+        "'Get Started' button that scrolls to signup section",
+        "Simple, vintage-inspired design (system fonts, minimal colors, clean layout)",
+        "No fake testimonials or stock photos",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-009",
+      "title": "Landing page features section",
+      "description": "As a visitor, I want to see key features so I understand what I'm getting.",
+      "acceptanceCriteria": [
+        "Features section below hero with 4 feature cards",
+        "Features: Voice input, Screenshot capture, Multi-channel notifications, Two-way conversations",
+        "Each card has simple icon (can use emoji or unicode), title, and 1-2 sentence description",
+        "Clean grid layout (2x2 on desktop, stack on mobile), no animations",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-010",
+      "title": "Landing page installation snippet",
+      "description": "As a developer, I want to see how easy installation is before signing up.",
+      "acceptanceCriteria": [
+        "Code block section showing the script tag installation",
+        "Pre-formatted code with syntax highlighting (use inline styles, no external lib)",
+        "'Copy' button that copies snippet to clipboard",
+        "Brief text above: 'Add one line to your site'",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-011",
+      "title": "Landing page signup CTA",
+      "description": "As a visitor, I want a clear path to sign up and start using HeyDev.",
+      "acceptanceCriteria": [
+        "Signup section with email input field and 'Get Started' button",
+        "Submitting triggers magic link flow (POST /api/auth/magic-link)",
+        "Shows success message: 'Check your email for a login link'",
+        "Shows error message for invalid email or API errors",
+        "Loading state on button during submission",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-012",
+      "title": "Landing page footer",
+      "description": "As a visitor, I want to find additional resources and links.",
+      "acceptanceCriteria": [
+        "Footer section at bottom of landing page",
+        "GitHub link (https://github.com/justuseapen/heydev)",
+        "'Self-host' text/link mentioning open source",
+        "Simple copyright notice with current year",
+        "Minimal design, no newsletter signup or social links",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-013",
+      "title": "Update routing for landing page as homepage",
+      "description": "As a system, the landing page should be the default route.",
+      "acceptanceCriteria": [
+        "'/' route shows LandingPage component",
+        "Remove or repurpose old HomePage component",
+        "Authenticated users still see landing page at '/'",
+        "Dashboard accessible at '/setup', inbox at '/inbox'",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-014",
+      "title": "Navigation header with auth-aware links",
+      "description": "As a user, I want navigation that shows relevant links based on login state.",
+      "acceptanceCriteria": [
+        "Update Layout.tsx header navigation",
+        "When logged out: show 'Login' link",
+        "When logged in: show 'Inbox', 'Setup', 'Logout' links",
+        "Inbox link shows unread count badge (e.g., 'Inbox (3)')",
+        "Fetch unread count from /api/feedback/unread-count on mount",
+        "Badge hidden when count is 0",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-015",
+      "title": "Feedback inbox page route and layout",
+      "description": "As a developer, I want an inbox page to view all my feedback.",
+      "acceptanceCriteria": [
+        "New InboxPage.tsx component in dashboard/src/pages/",
+        "Route at /inbox (requires authentication, redirect to /login if not)",
+        "Page header: 'Feedback Inbox'",
+        "Tabs: 'Active' (default) and 'Archived'",
+        "Empty state message when no feedback exists",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-016",
+      "title": "Feedback list component",
+      "description": "As a developer, I want to see a list of all feedback items.",
+      "acceptanceCriteria": [
+        "FeedbackList component fetches from GET /api/feedback",
+        "Each item displays: message preview (truncated to ~100 chars), relative timestamp, status badge",
+        "Unread indicator: red dot or bold text for items where readAt is null",
+        "Clicking item navigates to /inbox/:conversationId",
+        "Loading state while fetching",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-017",
+      "title": "Conversation detail page",
+      "description": "As a developer, I want to view the full conversation thread.",
+      "acceptanceCriteria": [
+        "New ConversationPage.tsx at route /inbox/:conversationId",
+        "Fetches conversation from GET /api/feedback/:conversationId",
+        "Marks as read on load (PATCH /api/feedback/:conversationId/read)",
+        "Shows all messages in chronological order",
+        "User messages styled on right, developer replies on left (or different background)",
+        "Shows context metadata: page URL, browser, OS, viewport, timestamp",
+        "Shows screenshot if present (clickable to view full size)",
+        "Shows console errors if any (collapsible section)",
+        "Back link to inbox",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-018",
+      "title": "Reply composer in conversation detail",
+      "description": "As a developer, I want to reply to users from the dashboard.",
+      "acceptanceCriteria": [
+        "Text area at bottom of conversation detail page",
+        "'Send Reply' button (disabled when textarea empty)",
+        "Submitting calls POST /api/webhook/reply with session_id and message",
+        "New message appears in thread immediately after successful send",
+        "Clears textarea after successful send",
+        "Error handling for failed sends",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 18,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-019",
+      "title": "Resolve/reopen conversation buttons",
+      "description": "As a developer, I want to mark conversations as resolved and undo if needed.",
+      "acceptanceCriteria": [
+        "'Mark Resolved' button visible when status is 'new'",
+        "'Reopen' button visible when status is 'resolved'",
+        "Clicking calls PATCH /api/feedback/:conversationId/status",
+        "Status change reflected immediately in UI",
+        "Button text and style change based on current status",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 19,
+      "passes": false,
+      "notes": ""
+    },
+    {
+      "id": "US-020",
+      "title": "Archive/unarchive conversation buttons",
+      "description": "As a developer, I want to archive resolved conversations to clean up my inbox.",
+      "acceptanceCriteria": [
+        "'Archive' button visible on conversation detail when status is 'resolved'",
+        "Clicking calls PATCH /api/feedback/:conversationId/archive",
+        "After archiving, redirect to /inbox or show 'Unarchive' button",
+        "'Unarchive' button visible when viewing archived conversation",
+        "Clicking unarchive calls PATCH /api/feedback/:conversationId/unarchive",
+        "Typecheck passes",
+        "Verify in browser using dev-browser skill"
+      ],
+      "priority": 20,
+      "passes": false,
+      "notes": ""
+    }
+  ]
+}

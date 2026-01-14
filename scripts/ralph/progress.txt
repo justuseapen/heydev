@@ -1,3 +1,21 @@
 # Ralph Progress Log
-Started: Mon Jan 12 16:47:45 EST 2026
+Started: Tue Jan 14 2026
+Feature: Phase 2 - Feedback Inbox & Landing Page
+---
+
+## Codebase Patterns
+- Database schema in `server/src/db/schema.ts` uses Drizzle ORM with SQLite
+- Use `text("column", { enum: enumArray })` for enum columns with `notNull().default("value")` for defaults
+- Use `integer("column")` for nullable timestamp columns (null = not set)
+- Export type constants like `conversationStatuses` as const arrays for type safety
+---
+
+## 2026-01-14 - US-001
+- What was implemented: Added status, readAt, and archivedAt columns to conversations table
+- Files changed: server/src/db/schema.ts
+- **Learnings for future iterations:**
+  - Schema uses Drizzle ORM patterns - follow existing conventions
+  - Timestamps are stored as integers for readAt/archivedAt (Unix timestamps)
+  - Status uses text with enum constraint for type safety
+  - Added ConversationStatus type export for use in other files
 ---
