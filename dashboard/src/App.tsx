@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { LandingPage } from './pages/LandingPage';
@@ -6,7 +7,44 @@ import { SetupPage } from './pages/SetupPage';
 import { InboxPage } from './pages/InboxPage';
 import { ConversationPage } from './pages/ConversationPage';
 
+// Type declaration for HeyDev widget global
+declare global {
+  interface Window {
+    HeyDev?: {
+      destroy: () => void;
+      captureError: (error: Error) => void;
+    };
+  }
+}
+
+// HeyDev widget configuration for dogfooding
+const HEYDEV_API_KEY = import.meta.env.VITE_HEYDEV_API_KEY;
+const HEYDEV_ENDPOINT = 'https://heydev.io';
+
 export function App() {
+  // Load HeyDev widget for dogfooding (collecting feedback and errors from our own dashboard)
+  useEffect(() => {
+    if (!HEYDEV_API_KEY) {
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.src = `${HEYDEV_ENDPOINT}/widget.js`;
+    script.async = true;
+    script.setAttribute('data-api-key', HEYDEV_API_KEY);
+    script.setAttribute('data-endpoint', HEYDEV_ENDPOINT);
+    script.setAttribute('data-error-tracking', 'true');
+    document.body.appendChild(script);
+
+    return () => {
+      // Cleanup widget on unmount
+      document.body.removeChild(script);
+      if (window.HeyDev?.destroy) {
+        window.HeyDev.destroy();
+      }
+    };
+  }, []);
+
   return (
     <Routes>
       <Route path="/" element={<Layout />}>
