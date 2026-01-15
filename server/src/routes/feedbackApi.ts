@@ -5,8 +5,8 @@
 
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
-import { eq, and, isNull, isNotNull, desc, asc, sql } from 'drizzle-orm';
-import { db, apiKeys, sessions, users, conversations, messages } from '../db/index.js';
+import { eq, and, isNull, isNotNull, desc, asc, sql, inArray } from 'drizzle-orm';
+import { db, apiKeys, sessions, users, conversations, messages, projects } from '../db/index.js';
 import type { ConversationStatus, ConversationType } from '../db/schema.js';
 
 export const feedbackApiRoutes = new Hono();
@@ -35,11 +35,38 @@ async function getAuthenticatedUser(sessionCookie: string | undefined) {
 }
 
 /**
- * Get the user's API key
+ * Get all API keys for user's projects
  */
-async function getUserApiKey(userId: number) {
-  return db.query.apiKeys.findFirst({
-    where: eq(apiKeys.userId, String(userId)),
+async function getUserApiKeys(userId: number) {
+  // Get all projects for this user
+  const userProjects = await db.query.projects.findMany({
+    where: eq(projects.userId, userId),
+  });
+
+  if (userProjects.length === 0) {
+    return [];
+  }
+
+  const projectIds = userProjects.map(p => p.id);
+
+  // Get all API keys for these projects
+  return db.query.apiKeys.findMany({
+    where: inArray(apiKeys.projectId, projectIds),
+  });
+}
+
+/**
+ * Get project info for an API key
+ */
+async function getProjectForApiKey(apiKeyId: number) {
+  const apiKey = await db.query.apiKeys.findFirst({
+    where: eq(apiKeys.id, apiKeyId),
+  });
+
+  if (!apiKey?.projectId) return null;
+
+  return db.query.projects.findFirst({
+    where: eq(projects.id, apiKey.projectId),
   });
 }
 
@@ -60,12 +87,13 @@ function getMessagePreview(content: string, maxLength = 100): string {
 
 /**
  * GET /
- * List feedback conversations for authenticated user's API key
+ * List feedback conversations for authenticated user's projects
  *
  * Query params:
  * - archived: 'true' | 'false' (default: 'false')
  * - status: 'new' | 'resolved' (optional)
  * - type: 'feedback' | 'error' (optional, filters by conversation type)
+ * - projectId: number (optional, filter by specific project)
  */
 feedbackApiRoutes.get('/', async (c) => {
   const sessionCookie = getCookie(c, 'heydev_session');
@@ -75,20 +103,38 @@ feedbackApiRoutes.get('/', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  // Get user's API key
-  const apiKey = await getUserApiKey(user.id);
-  if (!apiKey) {
-    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  // Get all API keys for user's projects
+  const userApiKeys = await getUserApiKeys(user.id);
+  if (userApiKeys.length === 0) {
+    return c.json({ error: 'No projects found. Create a project first.' }, 400);
   }
 
   // Parse query params
   const archivedParam = c.req.query('archived');
   const statusParam = c.req.query('status') as ConversationStatus | undefined;
   const typeParam = c.req.query('type') as ConversationType | undefined;
+  const projectIdParam = c.req.query('projectId');
   const showArchived = archivedParam === 'true';
 
-  // Build where conditions
-  const conditions = [eq(conversations.apiKeyId, apiKey.id)];
+  // Filter API keys by project if specified
+  let apiKeyIds = userApiKeys.map(k => k.id);
+
+  if (projectIdParam) {
+    const projectId = parseInt(projectIdParam, 10);
+    if (!isNaN(projectId)) {
+      // Find the API key for this specific project
+      const projectApiKey = userApiKeys.find(k => k.projectId === projectId);
+      if (projectApiKey) {
+        apiKeyIds = [projectApiKey.id];
+      } else {
+        // Project not found or doesn't belong to user
+        return c.json([]);
+      }
+    }
+  }
+
+  // Build where conditions - span all user's API keys (or filtered by project)
+  const conditions = [inArray(conversations.apiKeyId, apiKeyIds)];
 
   if (showArchived) {
     conditions.push(isNotNull(conversations.archivedAt));
@@ -111,7 +157,20 @@ feedbackApiRoutes.get('/', async (c) => {
     orderBy: [desc(conversations.createdAt)],
   });
 
-  // For each conversation, get message count and latest message
+  // Build a map of apiKeyId -> project for efficient lookup
+  const apiKeyToProject = new Map<number, { id: number; name: string }>();
+  for (const apiKey of userApiKeys) {
+    if (apiKey.projectId) {
+      const project = await db.query.projects.findFirst({
+        where: eq(projects.id, apiKey.projectId),
+      });
+      if (project) {
+        apiKeyToProject.set(apiKey.id, { id: project.id, name: project.name });
+      }
+    }
+  }
+
+  // For each conversation, get message count, latest message, and project info
   const results = await Promise.all(
     conversationsList.map(async (conv) => {
       // Get message count
@@ -132,6 +191,9 @@ feedbackApiRoutes.get('/', async (c) => {
         ? getMessagePreview(latestMessageResult.content)
         : null;
 
+      // Get project info
+      const project = apiKeyToProject.get(conv.apiKeyId);
+
       return {
         id: conv.id,
         sessionId: conv.sessionId,
@@ -144,6 +206,8 @@ feedbackApiRoutes.get('/', async (c) => {
         createdAt: conv.createdAt,
         latestMessage,
         messageCount,
+        projectId: project?.id || null,
+        projectName: project?.name || null,
       };
     })
   );
@@ -153,7 +217,7 @@ feedbackApiRoutes.get('/', async (c) => {
 
 /**
  * GET /unread-count
- * Get count of unread (non-archived) conversations
+ * Get count of unread (non-archived) conversations across all projects
  */
 feedbackApiRoutes.get('/unread-count', async (c) => {
   const sessionCookie = getCookie(c, 'heydev_session');
@@ -163,18 +227,20 @@ feedbackApiRoutes.get('/unread-count', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  const apiKey = await getUserApiKey(user.id);
-  if (!apiKey) {
-    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  const userApiKeys = await getUserApiKeys(user.id);
+  if (userApiKeys.length === 0) {
+    return c.json({ count: 0 });
   }
 
-  // Count non-archived conversations where readAt is null
+  const apiKeyIds = userApiKeys.map(k => k.id);
+
+  // Count non-archived conversations where readAt is null across all projects
   const countResult = await db
     .select({ count: sql<number>`count(*)` })
     .from(conversations)
     .where(
       and(
-        eq(conversations.apiKeyId, apiKey.id),
+        inArray(conversations.apiKeyId, apiKeyIds),
         isNull(conversations.archivedAt),
         isNull(conversations.readAt)
       )
@@ -197,28 +263,33 @@ feedbackApiRoutes.get('/:conversationId', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  // Get user's API key
-  const apiKey = await getUserApiKey(user.id);
-  if (!apiKey) {
-    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  // Get all API keys for user's projects
+  const userApiKeys = await getUserApiKeys(user.id);
+  if (userApiKeys.length === 0) {
+    return c.json({ error: 'No projects found. Create a project first.' }, 400);
   }
+
+  const apiKeyIds = userApiKeys.map(k => k.id);
 
   const conversationId = parseInt(c.req.param('conversationId'), 10);
   if (isNaN(conversationId)) {
     return c.json({ error: 'Invalid conversation ID' }, 400);
   }
 
-  // Fetch conversation
+  // Fetch conversation - check if it belongs to any of user's projects
   const conversation = await db.query.conversations.findFirst({
     where: and(
       eq(conversations.id, conversationId),
-      eq(conversations.apiKeyId, apiKey.id)
+      inArray(conversations.apiKeyId, apiKeyIds)
     ),
   });
 
   if (!conversation) {
     return c.json({ error: 'Conversation not found' }, 404);
   }
+
+  // Get project info for this conversation
+  const project = await getProjectForApiKey(conversation.apiKeyId);
 
   // Fetch all messages for this conversation in chronological order
   const conversationMessages = await db.query.messages.findMany({
@@ -278,17 +349,19 @@ feedbackApiRoutes.get('/:conversationId', async (c) => {
     createdAt: conversation.createdAt,
     context,
     messages: formattedMessages,
+    projectId: project?.id || null,
+    projectName: project?.name || null,
   });
 });
 
 /**
- * Helper to get and verify conversation ownership
+ * Helper to get and verify conversation ownership across all user's projects
  */
-async function getConversationForUser(conversationId: number, apiKeyId: number) {
+async function getConversationForUserProjects(conversationId: number, apiKeyIds: number[]) {
   return db.query.conversations.findFirst({
     where: and(
       eq(conversations.id, conversationId),
-      eq(conversations.apiKeyId, apiKeyId)
+      inArray(conversations.apiKeyId, apiKeyIds)
     ),
   });
 }
@@ -305,17 +378,19 @@ feedbackApiRoutes.patch('/:conversationId/read', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  const apiKey = await getUserApiKey(user.id);
-  if (!apiKey) {
-    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  const userApiKeys = await getUserApiKeys(user.id);
+  if (userApiKeys.length === 0) {
+    return c.json({ error: 'No projects found. Create a project first.' }, 400);
   }
+
+  const apiKeyIds = userApiKeys.map(k => k.id);
 
   const conversationId = parseInt(c.req.param('conversationId'), 10);
   if (isNaN(conversationId)) {
     return c.json({ error: 'Invalid conversation ID' }, 400);
   }
 
-  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  const conversation = await getConversationForUserProjects(conversationId, apiKeyIds);
   if (!conversation) {
     return c.json({ error: 'Conversation not found' }, 404);
   }
@@ -349,17 +424,19 @@ feedbackApiRoutes.patch('/:conversationId/status', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  const apiKey = await getUserApiKey(user.id);
-  if (!apiKey) {
-    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  const userApiKeys = await getUserApiKeys(user.id);
+  if (userApiKeys.length === 0) {
+    return c.json({ error: 'No projects found. Create a project first.' }, 400);
   }
+
+  const apiKeyIds = userApiKeys.map(k => k.id);
 
   const conversationId = parseInt(c.req.param('conversationId'), 10);
   if (isNaN(conversationId)) {
     return c.json({ error: 'Invalid conversation ID' }, 400);
   }
 
-  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  const conversation = await getConversationForUserProjects(conversationId, apiKeyIds);
   if (!conversation) {
     return c.json({ error: 'Conversation not found' }, 404);
   }
@@ -398,17 +475,19 @@ feedbackApiRoutes.patch('/:conversationId/archive', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  const apiKey = await getUserApiKey(user.id);
-  if (!apiKey) {
-    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  const userApiKeys = await getUserApiKeys(user.id);
+  if (userApiKeys.length === 0) {
+    return c.json({ error: 'No projects found. Create a project first.' }, 400);
   }
+
+  const apiKeyIds = userApiKeys.map(k => k.id);
 
   const conversationId = parseInt(c.req.param('conversationId'), 10);
   if (isNaN(conversationId)) {
     return c.json({ error: 'Invalid conversation ID' }, 400);
   }
 
-  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  const conversation = await getConversationForUserProjects(conversationId, apiKeyIds);
   if (!conversation) {
     return c.json({ error: 'Conversation not found' }, 404);
   }
@@ -441,17 +520,19 @@ feedbackApiRoutes.patch('/:conversationId/unarchive', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  const apiKey = await getUserApiKey(user.id);
-  if (!apiKey) {
-    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  const userApiKeys = await getUserApiKeys(user.id);
+  if (userApiKeys.length === 0) {
+    return c.json({ error: 'No projects found. Create a project first.' }, 400);
   }
+
+  const apiKeyIds = userApiKeys.map(k => k.id);
 
   const conversationId = parseInt(c.req.param('conversationId'), 10);
   if (isNaN(conversationId)) {
     return c.json({ error: 'Invalid conversation ID' }, 400);
   }
 
-  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  const conversation = await getConversationForUserProjects(conversationId, apiKeyIds);
   if (!conversation) {
     return c.json({ error: 'Conversation not found' }, 404);
   }
@@ -484,17 +565,19 @@ feedbackApiRoutes.post('/:conversationId/reply', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  const apiKey = await getUserApiKey(user.id);
-  if (!apiKey) {
-    return c.json({ error: 'No API key found. Generate one first.' }, 400);
+  const userApiKeys = await getUserApiKeys(user.id);
+  if (userApiKeys.length === 0) {
+    return c.json({ error: 'No projects found. Create a project first.' }, 400);
   }
+
+  const apiKeyIds = userApiKeys.map(k => k.id);
 
   const conversationId = parseInt(c.req.param('conversationId'), 10);
   if (isNaN(conversationId)) {
     return c.json({ error: 'Invalid conversation ID' }, 400);
   }
 
-  const conversation = await getConversationForUser(conversationId, apiKey.id);
+  const conversation = await getConversationForUserProjects(conversationId, apiKeyIds);
   if (!conversation) {
     return c.json({ error: 'Conversation not found' }, 404);
   }

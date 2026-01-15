@@ -16,6 +16,8 @@ interface Conversation {
   type: 'feedback' | 'error';
   occurrenceCount: number;
   lastOccurredAt: string | null;
+  projectId: number | null;
+  projectName: string | null;
 }
 
 type TypeFilter = 'all' | 'feedback' | 'error';
@@ -23,6 +25,7 @@ type TypeFilter = 'all' | 'feedback' | 'error';
 interface FeedbackListProps {
   archived: boolean;
   typeFilter?: TypeFilter;
+  projectId?: number | null;
 }
 
 function ErrorIcon() {
@@ -57,7 +60,7 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString();
 }
 
-export function FeedbackList({ archived, typeFilter = 'all' }: FeedbackListProps) {
+export function FeedbackList({ archived, typeFilter = 'all', projectId }: FeedbackListProps) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -69,6 +72,9 @@ export function FeedbackList({ archived, typeFilter = 'all' }: FeedbackListProps
     const params = new URLSearchParams({ archived: String(archived) });
     if (typeFilter !== 'all') {
       params.set('type', typeFilter);
+    }
+    if (projectId !== null && projectId !== undefined) {
+      params.set('projectId', String(projectId));
     }
 
     fetch(`${API_BASE}/api/feedback?${params}`, { credentials: 'include' })
@@ -85,7 +91,7 @@ export function FeedbackList({ archived, typeFilter = 'all' }: FeedbackListProps
       .finally(() => {
         setLoading(false);
       });
-  }, [archived, typeFilter]);
+  }, [archived, typeFilter, projectId]);
 
   if (loading) {
     return (
@@ -155,6 +161,11 @@ export function FeedbackList({ archived, typeFilter = 'all' }: FeedbackListProps
                   </span>
                 </div>
                 <div className="flex items-center gap-2 mt-1">
+                  {conv.projectName && projectId === undefined && (
+                    <span className="text-xs px-2 py-0.5 bg-gray-100 text-gray-600 rounded">
+                      {conv.projectName}
+                    </span>
+                  )}
                   <span
                     className={`text-xs px-2 py-0.5 ${
                       conv.status === 'new'

@@ -19,6 +19,7 @@ import { authRoutes } from './routes/auth.js';
 import { keysRoutes } from './routes/keys.js';
 import { channelsRoutes } from './routes/channels.js';
 import { feedbackApiRoutes } from './routes/feedbackApi.js';
+import { projectsRoutes } from './routes/projects.js';
 import { registerWebhookSender } from './services/webhookSender.js';
 import { registerEmailSender } from './services/emailNotificationSender.js';
 
@@ -61,6 +62,9 @@ app.route('/api/auth', authRoutes);
 
 // API key management routes (requires session auth, not API key auth)
 app.route('/api/keys', keysRoutes);
+
+// Project management routes (requires session auth, not API key auth)
+app.route('/api/projects', projectsRoutes);
 
 // Channel management routes (requires session auth, not API key auth)
 app.route('/api/channels', channelsRoutes);

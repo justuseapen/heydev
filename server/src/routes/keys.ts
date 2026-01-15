@@ -5,9 +5,9 @@
 
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import crypto from 'node:crypto';
-import { db, apiKeys, sessions, users } from '../db/index.js';
+import { db, apiKeys, sessions, users, projects } from '../db/index.js';
 
 export const keysRoutes = new Hono();
 
@@ -52,7 +52,7 @@ async function getAuthenticatedUser(sessionCookie: string | undefined) {
 
 /**
  * GET /api/keys
- * Get the current user's API key (returns prefix only, not full key)
+ * Get all API keys for user's projects
  */
 keysRoutes.get('/', async (c) => {
   const sessionCookie = getCookie(c, 'heydev_session');
@@ -62,26 +62,45 @@ keysRoutes.get('/', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  // Find existing API key for this user
-  const existingKey = await db.query.apiKeys.findFirst({
-    where: eq(apiKeys.userId, String(user.id)),
+  // Get all projects for this user
+  const userProjects = await db.query.projects.findMany({
+    where: eq(projects.userId, user.id),
   });
 
-  if (!existingKey) {
-    return c.json({ hasKey: false });
+  if (userProjects.length === 0) {
+    return c.json({ hasKeys: false, keys: [] });
   }
 
+  const projectIds = userProjects.map(p => p.id);
+
+  // Get all API keys for these projects
+  const userApiKeys = await db.query.apiKeys.findMany({
+    where: inArray(apiKeys.projectId, projectIds),
+  });
+
+  // Map keys to projects
+  const keysWithProjects = userApiKeys.map(key => {
+    const project = userProjects.find(p => p.id === key.projectId);
+    return {
+      id: key.id,
+      keyPrefix: getKeyPrefix(key.key),
+      createdAt: key.createdAt,
+      projectId: key.projectId,
+      projectName: project?.name || null,
+    };
+  });
+
   return c.json({
-    hasKey: true,
-    keyPrefix: getKeyPrefix(existingKey.key),
-    createdAt: existingKey.createdAt,
+    hasKeys: keysWithProjects.length > 0,
+    keys: keysWithProjects,
   });
 });
 
 /**
  * POST /api/keys
- * Generate a new API key for the current user
- * Returns full key only on creation (shown once)
+ * Generate a new API key for a project
+ * Requires projectId in body
+ * @deprecated Use POST /api/projects which creates both project and API key
  */
 keysRoutes.post('/', async (c) => {
   const sessionCookie = getCookie(c, 'heydev_session');
@@ -91,14 +110,33 @@ keysRoutes.post('/', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
-  // Check if user already has an API key
+  // Parse body for projectId
+  const body = await c.req.json<{ projectId?: number }>();
+
+  if (!body.projectId) {
+    return c.json(
+      { error: 'projectId is required. Use POST /api/projects to create a new project with an API key.' },
+      400
+    );
+  }
+
+  // Verify project belongs to user
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, body.projectId),
+  });
+
+  if (!project || project.userId !== user.id) {
+    return c.json({ error: 'Project not found' }, 404);
+  }
+
+  // Check if project already has an API key
   const existingKey = await db.query.apiKeys.findFirst({
-    where: eq(apiKeys.userId, String(user.id)),
+    where: eq(apiKeys.projectId, body.projectId),
   });
 
   if (existingKey) {
     return c.json(
-      { error: 'API key already exists. Delete existing key to generate a new one.' },
+      { error: 'Project already has an API key. Use POST /api/projects/:id/regenerate-key to generate a new one.' },
       400
     );
   }
@@ -111,6 +149,7 @@ keysRoutes.post('/', async (c) => {
     .insert(apiKeys)
     .values({
       key,
+      projectId: body.projectId,
       userId: String(user.id),
     })
     .returning();
@@ -121,13 +160,16 @@ keysRoutes.post('/', async (c) => {
     key,
     keyPrefix: getKeyPrefix(key),
     createdAt: newApiKey.createdAt,
+    projectId: body.projectId,
+    projectName: project.name,
     message: 'API key generated. Save it now - it will not be shown again!',
   });
 });
 
 /**
  * DELETE /api/keys
- * Delete the current user's API key
+ * Delete API key for a specific project
+ * Requires projectId query param
  */
 keysRoutes.delete('/', async (c) => {
   const sessionCookie = getCookie(c, 'heydev_session');
@@ -137,13 +179,32 @@ keysRoutes.delete('/', async (c) => {
     return c.json({ error: 'Not authenticated' }, 401);
   }
 
+  const projectIdParam = c.req.query('projectId');
+  if (!projectIdParam) {
+    return c.json({ error: 'projectId query parameter is required' }, 400);
+  }
+
+  const projectId = parseInt(projectIdParam, 10);
+  if (isNaN(projectId)) {
+    return c.json({ error: 'Invalid projectId' }, 400);
+  }
+
+  // Verify project belongs to user
+  const project = await db.query.projects.findFirst({
+    where: eq(projects.id, projectId),
+  });
+
+  if (!project || project.userId !== user.id) {
+    return c.json({ error: 'Project not found' }, 404);
+  }
+
   // Find and delete the API key
   const existingKey = await db.query.apiKeys.findFirst({
-    where: eq(apiKeys.userId, String(user.id)),
+    where: eq(apiKeys.projectId, projectId),
   });
 
   if (!existingKey) {
-    return c.json({ error: 'No API key found' }, 404);
+    return c.json({ error: 'No API key found for this project' }, 404);
   }
 
   await db.delete(apiKeys).where(eq(apiKeys.id, existingKey.id));

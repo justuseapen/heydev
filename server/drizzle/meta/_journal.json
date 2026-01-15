@@ -29,6 +29,13 @@
       "when": 1768426998593,
       "tag": "0003_charming_metal_master",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1768504553275,
+      "tag": "0004_sloppy_wilson_fisk",
+      "breakpoints": true
     }
   ]
 }

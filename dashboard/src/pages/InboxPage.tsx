@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FeedbackList } from '../components/FeedbackList';
+import { ProjectSelector } from '../components/ProjectSelector';
 
 // In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -11,6 +12,7 @@ type TypeFilter = 'all' | 'feedback' | 'error';
 export function InboxPage() {
   const [tab, setTab] = useState<Tab>('active');
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('all');
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
   const navigate = useNavigate();
@@ -44,12 +46,18 @@ export function InboxPage() {
 
   return (
     <div>
-      <h1
-        className="text-3xl font-bold text-gray-900 mb-6"
-        style={{ fontFamily: 'Georgia, serif' }}
-      >
-        Feedback Inbox
-      </h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1
+          className="text-3xl font-bold text-gray-900"
+          style={{ fontFamily: 'Georgia, serif' }}
+        >
+          Feedback Inbox
+        </h1>
+        <ProjectSelector
+          selectedProjectId={selectedProjectId}
+          onSelectProject={setSelectedProjectId}
+        />
+      </div>
 
       {/* Tabs */}
       <div className="border-b border-gray-200 mb-6">
@@ -95,7 +103,11 @@ export function InboxPage() {
       </div>
 
       {/* Feedback list */}
-      <FeedbackList archived={tab === 'archived'} typeFilter={typeFilter} />
+      <FeedbackList
+        archived={tab === 'archived'}
+        typeFilter={typeFilter}
+        projectId={selectedProjectId}
+      />
     </div>
   );
 }

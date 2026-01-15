@@ -16,6 +16,29 @@ export type ConversationStatus = (typeof conversationStatuses)[number];
 export const conversationTypes = ["feedback", "error"] as const;
 export type ConversationType = (typeof conversationTypes)[number];
 
+// Users table - for dashboard authentication
+export const users = sqliteTable("users", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  email: text("email").notNull().unique(),
+  setupStep: integer("setup_step").notNull().default(1),
+  setupCompletedAt: integer("setup_completed_at"),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
+// Projects table - for organizing feedback/errors by application
+export const projects = sqliteTable("projects", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  userId: integer("user_id")
+    .notNull()
+    .references(() => users.id),
+  name: text("name").notNull(),
+  createdAt: text("created_at")
+    .notNull()
+    .$defaultFn(() => new Date().toISOString()),
+});
+
 // API Keys table
 export const apiKeys = sqliteTable("api_keys", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -23,7 +46,8 @@ export const apiKeys = sqliteTable("api_keys", {
   createdAt: text("created_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-  userId: text("user_id"),
+  userId: text("user_id"), // Deprecated - kept for backward compatibility
+  projectId: integer("project_id").references(() => projects.id),
 });
 
 // Notification Channels table
@@ -70,30 +94,6 @@ export const messages = sqliteTable("messages", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
-// Export types for TypeScript inference
-export type ApiKey = typeof apiKeys.$inferSelect;
-export type NewApiKey = typeof apiKeys.$inferInsert;
-
-export type Channel = typeof channels.$inferSelect;
-export type NewChannel = typeof channels.$inferInsert;
-
-export type Conversation = typeof conversations.$inferSelect;
-export type NewConversation = typeof conversations.$inferInsert;
-
-export type Message = typeof messages.$inferSelect;
-export type NewMessage = typeof messages.$inferInsert;
-
-// Users table - for dashboard authentication
-export const users = sqliteTable("users", {
-  id: integer("id").primaryKey({ autoIncrement: true }),
-  email: text("email").notNull().unique(),
-  setupStep: integer("setup_step").notNull().default(1),
-  setupCompletedAt: integer("setup_completed_at"),
-  createdAt: text("created_at")
-    .notNull()
-    .$defaultFn(() => new Date().toISOString()),
-});
-
 // Auth tokens table - for magic link authentication
 export const authTokens = sqliteTable("auth_tokens", {
   id: integer("id").primaryKey({ autoIncrement: true }),
@@ -121,8 +121,24 @@ export const sessions = sqliteTable("sessions", {
     .$defaultFn(() => new Date().toISOString()),
 });
 
+// Export types for TypeScript inference
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+
+export type Project = typeof projects.$inferSelect;
+export type NewProject = typeof projects.$inferInsert;
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
+
+export type Channel = typeof channels.$inferSelect;
+export type NewChannel = typeof channels.$inferInsert;
+
+export type Conversation = typeof conversations.$inferSelect;
+export type NewConversation = typeof conversations.$inferInsert;
+
+export type Message = typeof messages.$inferSelect;
+export type NewMessage = typeof messages.$inferInsert;
 
 export type AuthToken = typeof authTokens.$inferSelect;
 export type NewAuthToken = typeof authTokens.$inferInsert;
