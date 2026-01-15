@@ -2,6 +2,28 @@
 Started: Wed Jan 15 2026
 ---
 
+## Tue Jan 14 2026 - US-007 (Iteration 14 - STILL BLOCKED)
+- **Verified**: Widget is still NOT appearing on heydev.io
+- **Checked via dev-browser**:
+  - Fixed elements in bottom-right corner: `[]` (empty - no widget)
+  - Scripts loaded: Only `https://heydev.io/assets/index-m7ClQ2w3.js` (main app bundle)
+  - Iframes: `[]` (empty - no widget iframe)
+  - HeyDev/Widget elements: `[]` (empty)
+- **Screenshot**: Landing page displays correctly but no widget visible in bottom-right
+- **Conclusion**: Coolify build env var STILL not set - human has not yet completed manual steps
+- **STATUS**: BLOCKED - Same as Iterations 2-13. Requires human with Coolify admin credentials.
+
+### ACTION STILL REQUIRED BY USER:
+1. Log into Coolify at http://172.252.211.242:8000 with admin credentials
+2. Navigate to HeyDev project → Environment/Build Settings
+3. Add BUILD environment variable: `VITE_HEYDEV_API_KEY=hd_live_b28320633d3c89ca477a2373e8363912`
+4. Click "Redeploy" to trigger new build
+5. After deploy, verify widget appears on heydev.io (bottom-right corner)
+6. Submit test feedback and confirm it appears in HeyDev inbox
+7. Update prd.json to set US-007 passes: true
+
+---
+
 ## Tue Jan 14 2026 - US-007 (Iteration 13 - STILL BLOCKED)
 - **Verified**: Widget is still NOT appearing on heydev.io
 - **Checked via dev-browser**:
