@@ -66,8 +66,8 @@
         "Verify 'Continue' button is enabled after key generation"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "This requires a valid magic link - may need to check email or use existing session"
+      "passes": true,
+      "notes": "Verified: Setup wizard step 1 works correctly. Created test session for user 1, navigated to /setup?step=1, verified all UI elements. API key generated (hd_live_b28320633d3c89ca477a2373e8363912), Copy button works, Continue button enabled after generation."
     },
     {
       "id": "US-005",
