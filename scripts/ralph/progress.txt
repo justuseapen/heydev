@@ -1,178 +1,30 @@
 # Ralph Progress Log
-Started: Tue Jan 14 2026
-Feature: Phase 2 - Feedback Inbox & Landing Page
+Started: Wed Jan 14 20:54:32 EST 2026
 ---
 
 ## Codebase Patterns
-- Database schema in `server/src/db/schema.ts` uses Drizzle ORM with SQLite
-- Use `text("column", { enum: enumArray })` for enum columns with `notNull().default("value")` for defaults
-- Use `integer("column")` for nullable timestamp columns (null = not set)
-- Export type constants like `conversationStatuses` as const arrays for type safety
-- Session auth: use `getCookie(c, 'heydev_session')` then lookup session/user (pattern in keys.ts, feedbackApi.ts)
-- Session-auth routes mount directly on app; API-key-auth routes mount under `api` Hono instance
-- Use `sql<number>\`count(*)\`` template for aggregations in Drizzle
-- In Hono, static routes (e.g., /unread-count) must be defined BEFORE parameterized routes (e.g., /:id)
-- Dashboard API calls: use `credentials: 'include'` with fetch to send session cookies
-- Dashboard API base: `import.meta.env.VITE_API_URL || 'http://localhost:3000'`
+- Production server container: `server-swockw8oo88ow0w0ocgc4ggw-013759300420`
+- Database volume: `/var/lib/docker/volumes/swockw8oo88ow0w0ocgc4ggw_heydev-data/_data/heydev.db`
+- drizzle-kit is not available in production container, must apply migrations manually with Node.js + better-sqlite3
+- Auth endpoint is at `/api/auth/magic-link`, not `/api/auth/login`
+- Health check endpoint: `GET /health` returns `{"status":"ok"}`
+
 ---
 
-## 2026-01-14 - US-001
-- What was implemented: Added status, readAt, and archivedAt columns to conversations table
-- Files changed: server/src/db/schema.ts
+## Wed Jan 15 2026 - US-001
+- **What was implemented**: Ran all database migrations (0000-0003) on production
+- **Files changed**: No code changes - database operations only on production
+- **Approach**:
+  1. SSH'd into production server at 172.252.211.242
+  2. Found HeyDev container via `docker ps`
+  3. Discovered database was empty (no tables existed)
+  4. Applied all 4 migrations (0000-0003) manually using Node.js script with better-sqlite3
+  5. Verified users table has new columns: `setup_step` and `setup_completed_at`
+  6. Restarted server container
+  7. Verified server is healthy via `/health` endpoint
 - **Learnings for future iterations:**
-  - Schema uses Drizzle ORM patterns - follow existing conventions
-  - Timestamps are stored as integers for readAt/archivedAt (Unix timestamps)
-  - Status uses text with enum constraint for type safety
-  - Added ConversationStatus type export for use in other files
----
-
-## 2026-01-14 - US-002
-- What was implemented: GET /api/feedback endpoint for listing conversations
-- Files changed: server/src/routes/feedbackApi.ts, server/src/index.ts
-- **Learnings for future iterations:**
-  - Session auth pattern: use `getCookie(c, 'heydev_session')` then lookup session/user
-  - Session-auth routes are mounted directly on app, API-key-auth routes mount under `api` Hono instance
-  - Use `sql<number>\`count(*)\`` template for aggregations in Drizzle
-  - Query params accessed via `c.req.query('param')` in Hono
-  - For listing with filters, build conditions array and use `and(...conditions)`
----
-
-## 2026-01-14 - US-003
-- What was implemented: GET /api/feedback/:conversationId endpoint for conversation detail
-- Files changed: server/src/routes/feedbackApi.ts
-- **Learnings for future iterations:**
-  - Route params accessed via `c.req.param('paramName')` in Hono
-  - Inbound message content is JSON with text, screenshot_url, audio_url, context fields
-  - Outbound message content is plain text (the reply message)
-  - Use `asc(column)` for ascending sort order in Drizzle
-  - Extract context from first inbound message for conversation metadata
----
-
-## 2026-01-14 - US-004, US-005, US-006
-- What was implemented: Conversation status management endpoints
-  - PATCH /:conversationId/read - marks as read
-  - PATCH /:conversationId/status - updates status (new/resolved)
-  - PATCH /:conversationId/archive - archives
-  - PATCH /:conversationId/unarchive - unarchives
-- Files changed: server/src/routes/feedbackApi.ts
-- **Learnings for future iterations:**
-  - Use `.update().set().where().returning()` for updates with Drizzle
-  - Timestamps stored as Unix seconds: `Math.floor(Date.now() / 1000)`
-  - Parse JSON body with `c.req.json<TypeHint>()` in Hono
-  - Created helper `getConversationForUser()` to DRY up ownership checks
----
-
-## 2026-01-14 - US-007
-- What was implemented: GET /api/feedback/unread-count endpoint
-- Files changed: server/src/routes/feedbackApi.ts
-- **Learnings for future iterations:**
-  - Static routes (like /unread-count) must be defined BEFORE parameterized routes (like /:conversationId) in Hono
-  - Use `and()` with multiple `isNull()` conditions for compound WHERE clauses
----
-
-## 2026-01-14 - US-008
-- What was implemented: LandingPage.tsx hero section component
-- Files changed: dashboard/src/pages/LandingPage.tsx
-- **Learnings for future iterations:**
-  - Dashboard uses TailwindCSS for styling
-  - Pages go in dashboard/src/pages/, components in dashboard/src/components/
-  - Use `document.getElementById()` and `scrollIntoView({ behavior: 'smooth' })` for scroll-to-section
-  - Vintage-inspired design uses Georgia serif for headings, system fonts elsewhere
----
-
-## 2026-01-14 - US-009
-- What was implemented: Features section with 4 feature cards
-- Files changed: dashboard/src/pages/LandingPage.tsx
-- **Learnings for future iterations:**
-  - Use HTML entities for unicode emojis (e.g., `&#127908;` for microphone)
-  - Tailwind responsive: `grid-cols-1 md:grid-cols-2` for 1 col mobile, 2 col desktop
----
-
-## 2026-01-14 - US-010
-- What was implemented: Installation snippet with syntax highlighting and copy button
-- Files changed: dashboard/src/pages/LandingPage.tsx
-- **Learnings for future iterations:**
-  - Use `navigator.clipboard.writeText()` for clipboard, with `document.execCommand('copy')` fallback
-  - Inline syntax highlighting: use `<span style={{ color: '...' }}>` for code tokens
-  - Use useState for temporary UI state like "Copied!" feedback
----
-
-## 2026-01-14 - US-011
-- What was implemented: Signup CTA with email form and magic link integration
-- Files changed: dashboard/src/pages/LandingPage.tsx
-- **Learnings for future iterations:**
-  - API_BASE from `import.meta.env.VITE_API_URL` for environment-aware API calls
-  - Use FormEvent type for form onSubmit handlers
-  - Pattern: loading/success/error state trio for async forms
----
-
-## 2026-01-14 - US-012
-- What was implemented: Footer with GitHub link and copyright
-- Files changed: dashboard/src/pages/LandingPage.tsx
-- **Learnings for future iterations:**
-  - Use `new Date().getFullYear()` for dynamic copyright year
-  - Always add `rel="noopener noreferrer"` with `target="_blank"` for security
----
-
-## 2026-01-14 - US-013
-- What was implemented: Updated routing to use LandingPage as homepage
-- Files changed: dashboard/src/App.tsx, dashboard/src/pages/HomePage.tsx (deleted)
-- **Learnings for future iterations:**
-  - React Router: use `<Route index element={...} />` for the default route within a parent
-  - Delete unused components to keep codebase clean
----
-
-## 2026-01-14 - US-014
-- What was implemented: Auth-aware navigation with unread count badge
-- Files changed: dashboard/src/components/Layout.tsx
-- **Learnings for future iterations:**
-  - Use `credentials: 'include'` with fetch to send cookies cross-origin
-  - Check auth on mount with /api/auth/me endpoint
-  - Chain fetch calls: auth check -> unread count (only if authenticated)
-  - useNavigate hook for programmatic navigation after logout
----
-
-## 2026-01-14 - US-015
-- What was implemented: InboxPage with tabs and auth redirect
-- Files changed: dashboard/src/pages/InboxPage.tsx, dashboard/src/App.tsx
-- **Learnings for future iterations:**
-  - Pattern for protected pages: useEffect auth check -> redirect if not authenticated
-  - Tabs pattern: useState for tab state, conditional border styling for active tab
----
-
-## 2026-01-14 - US-016
-- What was implemented: FeedbackList component with list items
-- Files changed: dashboard/src/components/FeedbackList.tsx, dashboard/src/pages/InboxPage.tsx
-- **Learnings for future iterations:**
-  - Relative time formatting helper: calculate diff in ms, then convert to mins/hours/days
-  - Use Link component from react-router-dom for clickable list items with navigation
-  - Red dot indicator for unread: `w-2 h-2 bg-red-500 rounded-full`
----
-
-## 2026-01-14 - US-017
-- What was implemented: ConversationPage with messages, context, screenshots
-- Files changed: dashboard/src/pages/ConversationPage.tsx, dashboard/src/App.tsx
-- **Learnings for future iterations:**
-  - useParams hook to get route params like :conversationId
-  - Inbound messages (from user) on left, outbound (replies) on right with dark bg
-  - Full-screen image modal: fixed inset-0 with bg-opacity-80
-  - Collapsible sections with useState toggle
----
-
-## 2026-01-14 - US-018
-- What was implemented: Reply composer with send functionality
-- Files changed: server/src/routes/feedbackApi.ts, dashboard/src/pages/ConversationPage.tsx
-- **Learnings for future iterations:**
-  - Created POST /:conversationId/reply endpoint for session-auth replies
-  - Optimistic UI: append new message to state immediately after API success
-  - Textarea resize-none prevents user from resizing
----
-
-## 2026-01-14 - US-019, US-020
-- What was implemented: Status change and archive/unarchive buttons
-- Files changed: dashboard/src/pages/ConversationPage.tsx
-- **Learnings for future iterations:**
-  - Conditional rendering: show different buttons based on conversation.status and archivedAt
-  - Archive -> redirect to /inbox; Unarchive -> update local state
-  - Group action buttons in header bar alongside back link
+  - Production container doesn't have drizzle-kit installed (dev dependency not included)
+  - Must use Node.js with better-sqlite3 to run migrations in container
+  - Migrations use `--> statement-breakpoint` separator between SQL statements
+  - Database uses WAL mode (heydev.db-wal and heydev.db-shm files present)
 ---
