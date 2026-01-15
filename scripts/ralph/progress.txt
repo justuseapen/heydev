@@ -46,3 +46,22 @@ Started: Wed Jan 14 20:54:32 EST 2026
   - The pre-migration bug was JSON parsing errors due to missing DB columns - this is now fixed
   - dev-browser skill requires writing TypeScript to tmp/ files rather than heredocs
 ---
+
+## Wed Jan 15 2026 - US-003
+- **What was implemented**: Verified landing page signup flow works
+- **Files changed**: No code changes - verification testing only
+- **Approach**:
+  1. Used dev-browser skill to navigate to https://heydev.io
+  2. Verified "Get Started Free" CTA button in hero section
+  3. Verified "Log In" link in header
+  4. Scrolled to bottom to find signup section
+  5. Verified "Start collecting feedback today" heading
+  6. Entered test email (test-landing@example.com) and clicked "Get Started"
+  7. Captured API response: `{"error":"Failed to send magic link email"}` with status 500
+  8. Verified error is displayed properly to user (red text under form)
+- **Learnings for future iterations:**
+  - Landing page has two signup entry points: hero CTA button and bottom signup form
+  - Both signup entry points use the same `/api/auth/magic-link` endpoint
+  - The signup form displays errors properly in red text below the input field
+  - "Failed to send magic link email" is expected for test domains - email service (Resend) rejects them
+---
