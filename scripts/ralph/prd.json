@@ -32,8 +32,8 @@
         "Verify 'Check your email' success message appears OR a proper error message if email fails"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "This verifies the migration fixed the Internal Server Error"
+      "passes": true,
+      "notes": "Verified: Login page displays correctly, API returns proper JSON response. Error 'Failed to send magic link email' is expected for test domains (email service rejects them). No JSON parsing errors."
     },
     {
       "id": "US-003",
