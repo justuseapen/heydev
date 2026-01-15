@@ -20,6 +20,24 @@ Started: Wed Jan 15 2026
 
 ---
 
+## Tue Jan 14 2026 - US-007 (Iteration 4 - STILL BLOCKED)
+- **Verified**: Widget is still NOT appearing on heydev.io
+- **Checked**: No fixed-position elements in bottom-right corner (where widget would appear)
+- **Checked**: No HeyDev widget scripts loaded on page (only main app bundle)
+- **Conclusion**: Coolify build env var still not set - human has not yet completed manual steps
+- **STATUS**: BLOCKED - Same as Iteration 3. Requires human with Coolify admin credentials.
+
+### ACTION STILL REQUIRED BY USER:
+1. Log into Coolify at http://172.252.211.242:8000 with admin credentials
+2. Navigate to HeyDev project → Environment/Build Settings
+3. Add BUILD environment variable: `VITE_HEYDEV_API_KEY=hd_live_b28320633d3c89ca477a2373e8363912`
+4. Click "Redeploy" to trigger new build
+5. After deploy, verify widget appears on heydev.io (bottom-right corner)
+6. Submit test feedback and confirm it appears in HeyDev inbox
+7. Update prd.json to set US-007 passes: true
+
+---
+
 ## Wed Jan 15 2026 - US-007 (Iteration 3 - BLOCKED - REQUIRES MANUAL INTERVENTION)
 - **Attempted**: Automated access to Coolify dashboard using dev-browser skill
 - **Result**: BLOCKED - Coolify login page at http://172.252.211.242:8000/login requires email/password
