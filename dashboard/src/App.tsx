@@ -18,7 +18,8 @@ declare global {
 }
 
 // HeyDev widget configuration for dogfooding
-const HEYDEV_API_KEY = import.meta.env.VITE_HEYDEV_API_KEY;
+// Fallback to hardcoded key if env var not set (Coolify build arg issue workaround)
+const HEYDEV_API_KEY = import.meta.env.VITE_HEYDEV_API_KEY || 'hd_live_b28320633d3c89ca477a2373e8363912';
 const HEYDEV_ENDPOINT = 'https://heydev.io';
 
 export function App() {
