@@ -87,8 +87,8 @@
         "Verify header shows: Inbox, Settings, Log out"
       ],
       "priority": 5,
-      "passes": false,
-      "notes": "Continue from US-004 session"
+      "passes": true,
+      "notes": "Verified: All wizard steps work correctly. Step 2 shows Install Widget with API key pre-filled and working Copy button. Step 3 shows Get Notified with Optional subtext, Email/Webhook toggles, and Skip for now link. Step 4 shows Test Your Integration with URL input, Open Test Page button, and Skip test link. Skip test navigates to /inbox. After reload, header shows Inbox, Settings, Log out."
     },
     {
       "id": "US-006",

@@ -1,5 +1,5 @@
 # Ralph Progress Log
-Started: Wed Jan 14 20:54:32 EST 2026
+Started: Wed Jan 15 2026
 ---
 
 ## Codebase Patterns
@@ -11,83 +11,35 @@ Started: Wed Jan 14 20:54:32 EST 2026
 - Session cookie name: `heydev_session`
 - Health check endpoint: `GET /health` returns `{"status":"ok"}`
 - To test authenticated flows: create session in DB, set `heydev_session` cookie in browser
+- API keys are prefixed with `hd_live_` for production keys
+- SSH to production: `ssh -i ~/.ssh/eapen-coolify.txt cloud@172.252.211.242`
 
 ---
 
-## Wed Jan 15 2026 - US-001
-- **What was implemented**: Ran all database migrations (0000-0003) on production
-- **Files changed**: No code changes - database operations only on production
-- **Approach**:
-  1. SSH'd into production server at 172.252.211.242
-  2. Found HeyDev container via `docker ps`
-  3. Discovered database was empty (no tables existed)
-  4. Applied all 4 migrations (0000-0003) manually using Node.js script with better-sqlite3
-  5. Verified users table has new columns: `setup_step` and `setup_completed_at`
-  6. Restarted server container
-  7. Verified server is healthy via `/health` endpoint
-- **Learnings for future iterations:**
-  - Production container doesn't have drizzle-kit installed (dev dependency not included)
-  - Must use Node.js with better-sqlite3 to run migrations in container
-  - Migrations use `--> statement-breakpoint` separator between SQL statements
-  - Database uses WAL mode (heydev.db-wal and heydev.db-shm files present)
----
-
-## Wed Jan 15 2026 - US-002
-- **What was implemented**: Verified login flow works after migration
+## Wed Jan 15 2026 - US-005
+- **What was implemented**: Verified setup wizard steps 2-4 work correctly
 - **Files changed**: No code changes - verification testing only
 - **Approach**:
-  1. Used dev-browser skill to navigate to https://heydev.io/login
-  2. Verified "Welcome back" heading is visible
-  3. Verified "New to HeyDev? Sign up free" link is visible
-  4. Entered test email and clicked "Send Magic Link"
-  5. Captured API response to verify proper JSON format
-  6. API returned `{"error":"Failed to send magic link email"}` with status 500
-  7. This is expected behavior - email service (Resend) rejects fake domains like example.com
+  1. Used dev-browser skill to navigate through setup wizard steps
+  2. Step 2: Verified "Install the Widget" heading, code snippet with API key pre-filled, Copy button works
+  3. Step 3: Verified "Get Notified" heading with "Optional" subtext, Email/Webhook toggle cards, Skip for now link
+  4. Step 4: Verified "Test Your Integration" heading, URL input field, "Open Test Page" button, "Skip test" link
+  5. Had to reset test user's setup_completed_at to NULL to test step 4 (was already set from US-004)
+  6. Clicking "Skip test" navigates to /inbox and sets setup_completed_at timestamp
+  7. After page reload, header shows: Inbox, Settings, Log out (full navigation)
 - **Learnings for future iterations:**
-  - Login API returns proper JSON responses, not HTML error pages
-  - "Failed to send magic link email" error is from email service rejecting test domains
-  - The pre-migration bug was JSON parsing errors due to missing DB columns - this is now fixed
-  - dev-browser skill requires writing TypeScript to tmp/ files rather than heredocs
+  - SetupPage renders wizard when `user.setupCompletedAt === null`, Settings view when completed
+  - Layout component shows different nav based on setupCompletedAt: during setup only "Log out", after setup shows "Inbox, Settings, Log out"
+  - To re-test wizard after completion, reset user's setup_completed_at to NULL in database
+  - Session cookie may cache old user data; page reload needed to see updated nav after setup completion
 ---
 
-## Wed Jan 15 2026 - US-003
-- **What was implemented**: Verified landing page signup flow works
-- **Files changed**: No code changes - verification testing only
-- **Approach**:
-  1. Used dev-browser skill to navigate to https://heydev.io
-  2. Verified "Get Started Free" CTA button in hero section
-  3. Verified "Log In" link in header
-  4. Scrolled to bottom to find signup section
-  5. Verified "Start collecting feedback today" heading
-  6. Entered test email (test-landing@example.com) and clicked "Get Started"
-  7. Captured API response: `{"error":"Failed to send magic link email"}` with status 500
-  8. Verified error is displayed properly to user (red text under form)
-- **Learnings for future iterations:**
-  - Landing page has two signup entry points: hero CTA button and bottom signup form
-  - Both signup entry points use the same `/api/auth/magic-link` endpoint
-  - The signup form displays errors properly in red text below the input field
-  - "Failed to send magic link email" is expected for test domains - email service (Resend) rejects them
+## Previous Run Summary (Onboarding Overhaul)
+- Successfully deployed SetupWizard with 4 steps
+- Database migration 0003 applied (setup_step, setup_completed_at columns)
+- Login and landing pages verified working
+- Setup wizard step 1 (API key generation) verified working
+- Blocking issue: Resend domain (heydev.io) not verified - emails fail with 403
+
 ---
 
-## Wed Jan 15 2026 - US-004
-- **What was implemented**: Verified setup wizard appears for new users
-- **Files changed**: No code changes - verification testing only
-- **Approach**:
-  1. Used dev-browser skill to navigate to https://heydev.io/setup?step=1
-  2. Initially redirected to login (authentication required)
-  3. Created a test session in production database for user 1 (test@example.com)
-  4. Session ID: `80d3fd25-68ea-4b4c-b102-48bb218fd8fa` stored in `heydev_session` cookie
-  5. Set cookie in browser and navigated to /setup?step=1 successfully
-  6. Verified "Step 1 of 4" indicator is visible
-  7. Verified "Generate Your API Key" heading is visible
-  8. Clicked "Generate API Key" button
-  9. Verified API key was generated: `hd_live_b28320633d3c89ca477a2373e8363912`
-  10. Verified "Copy" button works (clipboard contains API key)
-  11. Verified "Continue" button is enabled after key generation
-- **Learnings for future iterations:**
-  - Session cookie name is `heydev_session`
-  - Database path in container is `/app/server/data/heydev.db` (not `/data/heydev.db`)
-  - Sessions table uses `session_id` column (not just `id`) for the session token
-  - To test authenticated flows, create a session directly in the database and set the cookie in browser
-  - API keys are prefixed with `hd_live_` for production keys
----
