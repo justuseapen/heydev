@@ -40,9 +40,6 @@ eslint.config.js
 tasks/
 scripts/
 
-# Widget source (CDN-hosted)
-widget/
-
 # Claude code config
 .claude/
 
