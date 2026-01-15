@@ -17,7 +17,7 @@ export function LandingPage() {
     }
   };
 
-  const installSnippet = '<script src="https://cdn.heydev.io/widget.js" data-key="YOUR_API_KEY"></script>';
+  const installSnippet = '<script src="https://heydev.io/widget.js" data-key="YOUR_API_KEY"></script>';
 
   const copyToClipboard = async () => {
     try {
@@ -150,7 +150,7 @@ export function LandingPage() {
                 <span style={{ color: '#9CA3AF' }}> </span>
                 <span style={{ color: '#FBBF24' }}>src</span>
                 <span style={{ color: '#9CA3AF' }}>=</span>
-                <span style={{ color: '#34D399' }}>"https://cdn.heydev.io/widget.js"</span>
+                <span style={{ color: '#34D399' }}>"https://heydev.io/widget.js"</span>
                 <span style={{ color: '#9CA3AF' }}> </span>
                 <span style={{ color: '#FBBF24' }}>data-key</span>
                 <span style={{ color: '#9CA3AF' }}>=</span>

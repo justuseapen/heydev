@@ -583,7 +583,7 @@ function Step2WidgetInstall({ apiKey, onBack, onContinue }: Step2WidgetInstallPr
   const [copied, setCopied] = useState(false);
 
   // Widget script snippet with user's API key
-  const widgetSnippet = `<script src="https://cdn.heydev.co/widget.js" data-api-key="${apiKey}"></script>`;
+  const widgetSnippet = `<script src="https://heydev.io/widget.js" data-api-key="${apiKey}"></script>`;
 
   const handleCopySnippet = async () => {
     try {
@@ -621,7 +621,7 @@ function Step2WidgetInstall({ apiKey, onBack, onContinue }: Step2WidgetInstallPr
               <span className="text-gray-100"> </span>
               <span className="text-yellow-300">src</span>
               <span className="text-gray-100">=</span>
-              <span className="text-green-400">"https://cdn.heydev.co/widget.js"</span>
+              <span className="text-green-400">"https://heydev.io/widget.js"</span>
               <span className="text-gray-100"> </span>
               <span className="text-yellow-300">data-api-key</span>
               <span className="text-gray-100">=</span>
