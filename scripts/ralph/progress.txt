@@ -20,6 +20,41 @@ Started: Wed Jan 15 2026
 
 ---
 
+## Wed Jan 15 2026 - US-007 (Iteration 3 - BLOCKED - REQUIRES MANUAL INTERVENTION)
+- **Attempted**: Automated access to Coolify dashboard using dev-browser skill
+- **Result**: BLOCKED - Coolify login page at http://172.252.211.242:8000/login requires email/password
+- **Screenshot taken**: Coolify login page confirms auth is required
+- **All code changes COMPLETE**: Dockerfile already updated (commit 48c06e4)
+- **STATUS**: Cannot proceed autonomously - requires human with Coolify admin credentials
+
+### ACTION REQUIRED BY USER:
+1. Log into Coolify at http://172.252.211.242:8000 with admin credentials
+2. Navigate to HeyDev project → Environment/Build Settings
+3. Add BUILD environment variable: `VITE_HEYDEV_API_KEY=hd_live_b28320633d3c89ca477a2373e8363912`
+4. Click "Redeploy" to trigger new build
+5. After deploy, verify widget appears on heydev.io (bottom-right corner)
+6. Submit test feedback and confirm it appears in HeyDev inbox
+
+Once verified, update prd.json to set US-007 passes: true
+
+---
+
+## Wed Jan 15 2026 - US-007 (Iteration 2 - STILL BLOCKED)
+- **Attempted**: Automated access to Coolify dashboard using dev-browser skill
+- **Result**: BLOCKED - Coolify login page requires email/password credentials
+- **Screenshot**: Coolify login page at http://172.252.211.242:8000/login shows Email and Password fields
+- **Previous progress**: Dockerfile updated with VITE_HEYDEV_API_KEY build arg (commit 48c06e4)
+- **Manual steps STILL required to complete**:
+  1. Log into Coolify at http://172.252.211.242:8000 with admin credentials
+  2. Navigate to HeyDev project environment/build settings
+  3. Add BUILD environment variable: `VITE_HEYDEV_API_KEY=hd_live_b28320633d3c89ca477a2373e8363912`
+  4. Trigger a new deployment
+  5. Verify widget appears on heydev.io and submit test feedback
+- **Learnings for future iterations:**
+  - Coolify dashboard requires authentication - cannot be automated without credentials
+  - Store Coolify credentials securely in a password manager for future access
+---
+
 ## Wed Jan 15 2026 - US-007 (PARTIALLY COMPLETE - STILL BLOCKED)
 - **What was implemented**: Added VITE_HEYDEV_API_KEY build argument to Dockerfile
 - **Files changed**: `Dockerfile` (commit 48c06e4)
