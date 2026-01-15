@@ -34,6 +34,23 @@ Started: Wed Jan 15 2026
   - Session cookie may cache old user data; page reload needed to see updated nav after setup completion
 ---
 
+## Wed Jan 15 2026 - US-006
+- **What was implemented**: Verified returning user flow (users who completed setup)
+- **Files changed**: No code changes - verification testing only
+- **Approach**:
+  1. Found user 1 (test@example.com) in production DB with setup_completed_at set
+  2. Created session for user 1 by inserting into sessions table
+  3. Used dev-browser to set heydev_session cookie and navigate to /inbox
+  4. Verified /inbox loads correctly with full nav: Inbox, Settings, Log out
+  5. Clicked Settings link - navigates to /setup which shows Settings view (not wizard)
+  6. Settings page displays: API Key section (with masked key), Widget snippet, Notification Channels (Slack)
+- **Learnings for future iterations:**
+  - Sessions table schema: id, session_id (not token), user_id, expires_at, created_at
+  - expires_at and created_at are TEXT (ISO strings), not INTEGER timestamps
+  - To create test session: INSERT INTO sessions (session_id, user_id, expires_at, created_at) VALUES (?, ?, ?, ?)
+  - Landing page (/) is public and doesn't redirect authenticated users - must navigate directly to /inbox
+---
+
 ## Previous Run Summary (Onboarding Overhaul)
 - Successfully deployed SetupWizard with 4 steps
 - Database migration 0003 applied (setup_step, setup_completed_at columns)

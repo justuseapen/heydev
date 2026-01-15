@@ -101,8 +101,8 @@
         "Verify clicking Settings goes to /setup which shows settings view (not wizard)"
       ],
       "priority": 6,
-      "passes": false,
-      "notes": "Use the test user from US-005 who completed setup"
+      "passes": true,
+      "notes": "Verified: Created session for test@example.com (user 1, setupCompletedAt set). Navigating to /inbox shows Feedback Inbox with full nav (Inbox, Settings, Log out). Clicking Settings navigates to /setup which shows Settings view with API Key section, Widget snippet, and Notification Channels (not the setup wizard). Badge on Inbox only appears with unread feedback."
     },
     {
       "id": "US-007",
