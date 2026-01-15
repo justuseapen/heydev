@@ -1,7 +1,14 @@
-import { useState, FormEvent } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
+import { Link } from 'react-router-dom';
 
 // In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
 const API_BASE = import.meta.env.VITE_API_URL || '';
+
+interface User {
+  id: number;
+  email: string;
+  setupCompletedAt: number | null;
+}
 
 export function LandingPage() {
   const [copied, setCopied] = useState(false);
@@ -9,6 +16,35 @@ export function LandingPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<User | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    // Check if user is authenticated
+    fetch(`${API_BASE}/api/auth/me`, { credentials: 'include' })
+      .then((res) => {
+        if (res.ok) return res.json();
+        throw new Error('Not authenticated');
+      })
+      .then((data) => {
+        setUser(data);
+        // Fetch unread count if authenticated and setup is complete
+        if (data.setupCompletedAt) {
+          return fetch(`${API_BASE}/api/feedback/unread-count`, { credentials: 'include' });
+        }
+        return null;
+      })
+      .then((res) => {
+        if (res && res.ok) return res.json();
+        return { count: 0 };
+      })
+      .then((data) => {
+        setUnreadCount(data.count || 0);
+      })
+      .catch(() => {
+        setUser(null);
+      });
+  }, []);
 
   const scrollToSignup = () => {
     const signupSection = document.getElementById('signup');
@@ -66,6 +102,49 @@ export function LandingPage() {
 
   return (
     <div className="min-h-screen">
+      {/* Dashboard Banner for Logged-in Users */}
+      {user && user.setupCompletedAt && (
+        <section className="bg-indigo-600 py-4 px-4">
+          <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="text-white">
+              <span className="font-medium">Welcome back!</span>
+              {unreadCount > 0 && (
+                <span className="ml-2">
+                  You have{' '}
+                  <span className="font-bold">{unreadCount}</span> unread{' '}
+                  {unreadCount === 1 ? 'message' : 'messages'}.
+                </span>
+              )}
+            </div>
+            <Link
+              to="/inbox"
+              className="bg-white text-indigo-600 px-6 py-2 font-medium hover:bg-indigo-50 transition-colors flex items-center gap-2"
+            >
+              <svg
+                className="w-5 h-5"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v10z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+              Go to Dashboard
+              {unreadCount > 0 && (
+                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+                  {unreadCount}
+                </span>
+              )}
+            </Link>
+          </div>
+        </section>
+      )}
+
       {/* Hero Section */}
       <section className="py-24 px-4 text-center">
         <h1
