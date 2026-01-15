@@ -118,7 +118,7 @@
       ],
       "priority": 7,
       "passes": false,
-      "notes": "Widget code is already in App.tsx, just needs the env var set"
+      "notes": "PARTIALLY COMPLETE: Dockerfile updated with VITE_HEYDEV_API_KEY build arg (commit 48c06e4). STILL BLOCKED: Requires Coolify dashboard access to set env var. API key: hd_live_b28320633d3c89ca477a2373e8363912. Manual steps: 1) Log into Coolify at http://172.252.211.242:8000, 2) Add VITE_HEYDEV_API_KEY=hd_live_b28320633d3c89ca477a2373e8363912 as BUILD env var, 3) Redeploy, 4) Verify widget appears on heydev.io."
     }
   ]
 }

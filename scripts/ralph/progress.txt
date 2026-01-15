@@ -13,7 +13,36 @@ Started: Wed Jan 15 2026
 - To test authenticated flows: create session in DB, set `heydev_session` cookie in browser
 - API keys are prefixed with `hd_live_` for production keys
 - SSH to production: `ssh -i ~/.ssh/eapen-coolify.txt cloud@172.252.211.242`
+- Coolify dashboard: `http://172.252.211.242:8000` (requires credentials)
+- HeyDev dogfooding API key: `hd_live_b28320633d3c89ca477a2373e8363912` (user 1)
+- Widget code already in `dashboard/src/App.tsx`, loads when `VITE_HEYDEV_API_KEY` env var is set
+- Vite env vars (VITE_*) are embedded at BUILD time, require Dockerfile ARG+ENV and Coolify build vars
 
+---
+
+## Wed Jan 15 2026 - US-007 (PARTIALLY COMPLETE - STILL BLOCKED)
+- **What was implemented**: Added VITE_HEYDEV_API_KEY build argument to Dockerfile
+- **Files changed**: `Dockerfile` (commit 48c06e4)
+- **Status**: Code change complete, but BLOCKED waiting for Coolify env var configuration
+- **Completed steps**:
+  1. Found existing API key for user 1: `hd_live_b28320633d3c89ca477a2373e8363912`
+  2. Verified widget code exists in `dashboard/src/App.tsx`
+  3. Updated Dockerfile to accept `VITE_HEYDEV_API_KEY` as build argument
+  4. Pushed changes to main (commit 48c06e4)
+  5. Verified widget NOT appearing on heydev.io (expected - env var not set in Coolify)
+- **Manual steps required to complete**:
+  1. Log into Coolify at http://172.252.211.242:8000
+  2. Navigate to HeyDev project environment/build settings
+  3. Add BUILD environment variable: `VITE_HEYDEV_API_KEY=hd_live_b28320633d3c89ca477a2373e8363912`
+  4. Trigger a new deployment
+- **Remaining verification after redeploy**:
+  - Verify HeyDev widget appears on heydev.io pages
+  - Submit test feedback
+  - Verify feedback appears in HeyDev's inbox
+- **Learnings for future iterations:**
+  - Vite env vars are embedded at BUILD time, not runtime
+  - Dockerfile needs `ARG` and `ENV` declarations for build-time env vars
+  - Coolify build vars must be set in project settings before deploy
 ---
 
 ## Wed Jan 15 2026 - US-005
