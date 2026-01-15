@@ -36,9 +36,11 @@ RUN npm ci --workspace=dashboard
 COPY dashboard/ ./dashboard/
 COPY tsconfig.json ./
 
-# Build dashboard with production API URL
+# Build dashboard with production settings
 ARG VITE_API_URL=
+ARG VITE_HEYDEV_API_KEY=
 ENV VITE_API_URL=${VITE_API_URL}
+ENV VITE_HEYDEV_API_KEY=${VITE_HEYDEV_API_KEY}
 RUN npm run build --workspace=dashboard
 
 # Production stage
