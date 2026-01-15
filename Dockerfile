@@ -20,6 +20,25 @@ COPY tsconfig.json ./
 # Build the server
 RUN npm run build --workspace=server
 
+# Build stage - Widget
+FROM node:20-alpine AS widget-builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package.json package-lock.json ./
+COPY widget/package.json ./widget/
+
+# Install widget dependencies
+RUN npm ci --workspace=widget
+
+# Copy widget source
+COPY widget/ ./widget/
+COPY tsconfig.json ./
+
+# Build the widget
+RUN npm run build --workspace=widget
+
 # Build stage - Dashboard
 FROM node:20-alpine AS dashboard-builder
 
@@ -63,6 +82,9 @@ COPY --from=server-builder /app/server/dist ./server/dist
 
 # Copy built dashboard from builder stage
 COPY --from=dashboard-builder /app/dashboard/dist ./dashboard/dist
+
+# Copy built widget to dashboard/dist so it's served at /widget.js
+COPY --from=widget-builder /app/widget/dist/widget.js ./dashboard/dist/widget.js
 
 # Copy drizzle migrations
 COPY server/drizzle ./server/drizzle
