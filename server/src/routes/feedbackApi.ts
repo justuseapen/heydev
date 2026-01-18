@@ -77,7 +77,8 @@ function getMessagePreview(content: string, maxLength = 100): string {
   try {
     // Try parsing as JSON (inbound messages)
     const parsed = JSON.parse(content);
-    const text = parsed.text || '';
+    // For error messages, use 'message' field; for feedback, use 'text' field
+    const text = parsed.text || parsed.message || '';
     return text.length > maxLength ? text.substring(0, maxLength) + '...' : text;
   } catch {
     // Plain text (outbound messages)
@@ -319,9 +320,15 @@ feedbackApiRoutes.get('/:conversationId', async (c) => {
     if (msg.direction === 'inbound') {
       try {
         const parsed = JSON.parse(msg.content);
-        text = parsed.text || '';
-        screenshotUrl = parsed.screenshot_url || null;
-        audioUrl = parsed.audio_url || null;
+        // For error conversations, return raw JSON so frontend can parse error details
+        // Error messages have 'error_type', 'message', 'stack' fields instead of 'text'
+        if (conversation.type === 'error') {
+          text = msg.content; // Return raw JSON for error parsing
+        } else {
+          text = parsed.text || '';
+          screenshotUrl = parsed.screenshot_url || null;
+          audioUrl = parsed.audio_url || null;
+        }
       } catch {
         // Content not JSON, use as-is
       }
