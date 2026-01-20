@@ -262,7 +262,7 @@ export function SetupPage() {
   const handleCopySnippet = async () => {
     if (!generatedKey) return;
 
-    const snippet = `<script src="https://cdn.heydev.io/widget.js" data-api-key="${generatedKey.key}"></script>`;
+    const snippet = `<script src="https://heydev.io/widget.js" data-api-key="${generatedKey.key}"></script>`;
 
     try {
       await navigator.clipboard.writeText(snippet);
@@ -548,7 +548,7 @@ export function SetupPage() {
                 <div className="relative">
                   <pre className="bg-gray-900 text-gray-100 px-4 py-3 rounded-lg font-mono text-sm overflow-x-auto">
 {`<script
-  src="https://cdn.heydev.io/widget.js"
+  src="https://heydev.io/widget.js"
   data-api-key="${generatedKey.key}"
 ></script>`}
                   </pre>
@@ -592,7 +592,7 @@ export function SetupPage() {
                 </p>
                 <pre className="bg-gray-900 text-gray-100 px-4 py-3 rounded-lg font-mono text-sm overflow-x-auto">
 {`<script
-  src="https://cdn.heydev.io/widget.js"
+  src="https://heydev.io/widget.js"
   data-api-key="YOUR_API_KEY"
 ></script>`}
                 </pre>
