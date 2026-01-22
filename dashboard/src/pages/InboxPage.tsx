@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FeedbackList } from '../components/FeedbackList';
 import { ProjectSelector } from '../components/ProjectSelector';
+import { NewProjectModal } from '../components/NewProjectModal';
 
 // In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -15,6 +16,8 @@ export function InboxPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [showNewProjectModal, setShowNewProjectModal] = useState(false);
+  const [projectRefreshKey, setProjectRefreshKey] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -56,6 +59,8 @@ export function InboxPage() {
         <ProjectSelector
           selectedProjectId={selectedProjectId}
           onSelectProject={setSelectedProjectId}
+          onCreateProject={() => setShowNewProjectModal(true)}
+          refreshKey={projectRefreshKey}
         />
       </div>
 
@@ -107,6 +112,17 @@ export function InboxPage() {
         archived={tab === 'archived'}
         typeFilter={typeFilter}
         projectId={selectedProjectId}
+      />
+
+      {/* New Project Modal */}
+      <NewProjectModal
+        isOpen={showNewProjectModal}
+        onClose={() => setShowNewProjectModal(false)}
+        onProjectCreated={(project) => {
+          setProjectRefreshKey((k) => k + 1);
+          setSelectedProjectId(project.id);
+          setShowNewProjectModal(false);
+        }}
       />
     </div>
   );
