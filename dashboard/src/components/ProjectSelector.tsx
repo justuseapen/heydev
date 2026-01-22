@@ -13,9 +13,11 @@ interface Project {
 interface ProjectSelectorProps {
   selectedProjectId: number | null;
   onSelectProject: (projectId: number | null) => void;
+  onCreateProject?: () => void;
+  refreshKey?: number;
 }
 
-export function ProjectSelector({ selectedProjectId, onSelectProject }: ProjectSelectorProps) {
+export function ProjectSelector({ selectedProjectId, onSelectProject, onCreateProject, refreshKey }: ProjectSelectorProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
@@ -36,7 +38,7 @@ export function ProjectSelector({ selectedProjectId, onSelectProject }: ProjectS
       .finally(() => {
         setLoading(false);
       });
-  }, []);
+  }, [refreshKey]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -60,12 +62,13 @@ export function ProjectSelector({ selectedProjectId, onSelectProject }: ProjectS
     );
   }
 
-  if (projects.length === 0) {
+  // If no projects and no create option, hide completely
+  if (projects.length === 0 && !onCreateProject) {
     return null;
   }
 
-  // If only one project, don't show the selector
-  if (projects.length === 1) {
+  // If only one project and no create option, show static text
+  if (projects.length === 1 && !onCreateProject) {
     return (
       <div className="inline-flex items-center px-3 py-2 text-sm text-gray-700">
         <span className="font-medium">{projects[0].name}</span>
@@ -119,6 +122,23 @@ export function ProjectSelector({ selectedProjectId, onSelectProject }: ProjectS
                 {project.name}
               </button>
             ))}
+            {onCreateProject && (
+              <>
+                <div className="border-t border-gray-100" />
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    onCreateProject();
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  New Project
+                </button>
+              </>
+            )}
           </div>
         </div>
       )}
