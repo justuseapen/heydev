@@ -26,7 +26,7 @@ import { submitError } from './services/submitError';
  *
  * Supported attributes:
  * - data-api-key (required): API key for authentication
- * - data-endpoint: Backend endpoint URL (default: https://api.heydev.io)
+ * - data-endpoint: Backend endpoint URL (default: https://heydev.io)
  * - data-theme: 'light', 'dark', or 'auto' (default: 'auto')
  * - data-error-tracking: 'true' to enable automatic error capture (default: 'false')
  * - data-capture-exceptions: 'true'/'false' to capture JavaScript exceptions (default: 'true' when error-tracking enabled)
@@ -35,7 +35,7 @@ import { submitError } from './services/submitError';
 interface WidgetConfig {
   /** API key for authentication (required) */
   apiKey: string;
-  /** Backend endpoint URL (default: https://api.heydev.io) */
+  /** Backend endpoint URL (default: https://heydev.io) */
   endpoint: string;
   /** Theme setting: 'light', 'dark', or 'auto' (default: 'auto') */
   theme: Theme;
@@ -71,7 +71,7 @@ declare global {
 }
 
 /** Default production endpoint */
-const DEFAULT_ENDPOINT = 'https://api.heydev.io';
+const DEFAULT_ENDPOINT = 'https://heydev.io';
 
 /** Widget version */
 const VERSION = '0.1.0';

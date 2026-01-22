@@ -12,7 +12,7 @@ export interface SSEMessage {
 
 /** SSE client options */
 export interface SSEClientOptions {
-  /** Backend endpoint URL (e.g., https://api.heydev.io) */
+  /** Backend endpoint URL (e.g., https://heydev.io) */
   endpoint: string;
   /** Session ID to subscribe to */
   sessionId: string;
