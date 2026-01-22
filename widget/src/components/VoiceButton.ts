@@ -266,6 +266,9 @@ export function createVoiceButton(
   let audioChunks: Blob[] = [];
   let timeoutId: ReturnType<typeof setTimeout> | null = null;
   let finalTranscript = '';
+  let intentionallyStopped = false; // Track if user explicitly stopped recording
+  let restartAttempts = 0; // Track restart attempts to prevent infinite loops
+  const MAX_RESTART_ATTEMPTS = 3;
 
   // Inject styles if not already present
   const styleId = 'heydev-voice-button-styles';
@@ -362,6 +365,8 @@ export function createVoiceButton(
       recognition.lang = navigator.language || 'en-US';
 
       finalTranscript = '';
+      intentionallyStopped = false;
+      restartAttempts = 0;
 
       recognition.onstart = () => {
         recording = true;
@@ -392,14 +397,38 @@ export function createVoiceButton(
 
       recognition.onerror = (event: Event & { error: string }) => {
         console.error('Speech recognition error:', event.error);
+        // Don't stop on 'no-speech' error - just let it continue trying
+        if (event.error === 'no-speech') {
+          return;
+        }
         if (onError) {
           onError(event.error);
         }
+        intentionallyStopped = true; // Prevent restart on errors (except no-speech)
         stopNativeRecording();
       };
 
       recognition.onend = () => {
-        if (recording) {
+        // Only stop if we intentionally stopped, otherwise try to restart
+        if (intentionallyStopped) {
+          if (recording) {
+            stopNativeRecording();
+          }
+        } else if (recording && restartAttempts < MAX_RESTART_ATTEMPTS) {
+          // Recognition ended unexpectedly - try to restart
+          restartAttempts++;
+          console.log(
+            `Speech recognition ended unexpectedly, restarting (attempt ${restartAttempts}/${MAX_RESTART_ATTEMPTS})`
+          );
+          try {
+            recognition?.start();
+          } catch (e) {
+            console.error('Failed to restart speech recognition:', e);
+            stopNativeRecording();
+          }
+        } else if (recording) {
+          // Max restart attempts reached
+          console.warn('Speech recognition failed to stay active after multiple attempts');
           stopNativeRecording();
         }
       };
@@ -423,6 +452,7 @@ export function createVoiceButton(
     if (!recording) return;
 
     recording = false;
+    intentionallyStopped = true; // Mark as intentionally stopped to prevent restart
 
     if (timeoutId) {
       clearTimeout(timeoutId);
