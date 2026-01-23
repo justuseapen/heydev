@@ -31,6 +31,13 @@ const FORM_STYLES = `
   .heydev-form-actions {
     display: flex;
     gap: 8px;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .heydev-form-action-buttons {
+    display: flex;
+    gap: 8px;
   }
 
   .heydev-form-preview-area {
@@ -47,6 +54,23 @@ const FORM_STYLES = `
     font-size: 14px;
     text-align: center;
     animation: heydev-fade-in 0.2s ease;
+  }
+
+  .heydev-voice-status {
+    font-size: 11px;
+    color: var(--heydev-text-secondary, #6b7280);
+    text-align: center;
+    min-height: 16px;
+    padding: 2px 0;
+  }
+
+  .heydev-voice-status.is-recording {
+    color: var(--heydev-danger, #ef4444);
+    font-weight: 500;
+  }
+
+  .heydev-voice-status.is-processing {
+    color: var(--heydev-primary, #6366f1);
   }
 
   @keyframes heydev-fade-in {
@@ -177,10 +201,20 @@ export function createFeedbackForm(
   textareaContainer.className = 'heydev-form-textarea-container';
   textareaRow.appendChild(textareaContainer);
 
-  // Create action buttons container
+  // Create action buttons container with status area
   const actionsContainer = document.createElement('div');
   actionsContainer.className = 'heydev-form-actions';
   textareaRow.appendChild(actionsContainer);
+
+  // Create action buttons row
+  const actionButtonsRow = document.createElement('div');
+  actionButtonsRow.className = 'heydev-form-action-buttons';
+  actionsContainer.appendChild(actionButtonsRow);
+
+  // Create voice status element
+  const voiceStatusElement = document.createElement('div');
+  voiceStatusElement.className = 'heydev-voice-status';
+  actionsContainer.appendChild(voiceStatusElement);
 
   // Create preview area
   const previewArea = document.createElement('div');
@@ -344,24 +378,41 @@ export function createFeedbackForm(
 
   // Create screenshot button
   const screenshotBtn = createScreenshotButton({
-    container: actionsContainer,
+    container: actionButtonsRow,
     previewContainer: previewArea,
   });
 
   // Create voice button (voice input still available in reply mode)
   const voiceBtn = createVoiceButton({
-    container: actionsContainer,
+    container: actionButtonsRow,
     transcribeEndpoint: `${endpoint}/api/transcribe`,
     getSessionId: () => sessionId,
+    apiKey: apiKey,
     onTranscript: (text) => {
       textInput.setValue(text);
     },
     onRecordingStart: () => {
       clearStatus();
     },
+    onStatusChange: (status) => {
+      if (status) {
+        voiceStatusElement.textContent = status;
+        // Add appropriate styling based on status type
+        if (status.startsWith('Recording')) {
+          voiceStatusElement.className = 'heydev-voice-status is-recording';
+        } else if (status.includes('Processing')) {
+          voiceStatusElement.className = 'heydev-voice-status is-processing';
+        } else {
+          voiceStatusElement.className = 'heydev-voice-status';
+        }
+      } else {
+        voiceStatusElement.textContent = '';
+        voiceStatusElement.className = 'heydev-voice-status';
+      }
+    },
     onError: (error) => {
       console.error('Voice recording error:', error);
-      showStatus(`Voice error: ${error}`, 'error');
+      showStatus(error, 'error');
     },
   });
 
@@ -387,6 +438,8 @@ export function createFeedbackForm(
       textInput.clear();
       screenshotBtn.clearScreenshot();
       clearStatus();
+      voiceStatusElement.textContent = '';
+      voiceStatusElement.className = 'heydev-voice-status';
     },
     focus: () => {
       textInput.focus();

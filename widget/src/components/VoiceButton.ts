@@ -197,6 +197,10 @@ export interface VoiceButtonOptions {
   transcribeEndpoint?: string;
   /** Function to get the current session ID (required for fallback mode) */
   getSessionId?: () => string;
+  /** API key for authentication with transcribe endpoint */
+  apiKey?: string;
+  /** Callback when recording status changes (provides status text for display) */
+  onStatusChange?: (status: string | null) => void;
 }
 
 export interface VoiceButtonInstance {
@@ -244,6 +248,8 @@ export function createVoiceButton(
   const maxDuration = options.maxDuration ?? 60;
   const transcribeEndpoint = options.transcribeEndpoint;
   const getSessionId = options.getSessionId;
+  const apiKey = options.apiKey;
+  const onStatusChange = options.onStatusChange;
 
   // Check for Web Speech API support
   const SpeechRecognitionClass = getSpeechRecognition();
@@ -268,6 +274,43 @@ export function createVoiceButton(
   let intentionallyStopped = false; // Track if user explicitly stopped recording
   let restartAttempts = 0; // Track restart attempts to prevent infinite loops
   const MAX_RESTART_ATTEMPTS = 3;
+  let recordingStartTime: number | null = null;
+  let timerIntervalId: ReturnType<typeof setInterval> | null = null;
+
+  // Format recording time as MM:SS
+  const formatTime = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Update status message
+  const updateStatus = (status: string | null) => {
+    if (onStatusChange) {
+      onStatusChange(status);
+    }
+  };
+
+  // Start recording timer
+  const startTimer = () => {
+    recordingStartTime = Date.now();
+    updateStatus('Recording 0:00');
+    timerIntervalId = setInterval(() => {
+      if (recordingStartTime) {
+        const elapsed = Math.floor((Date.now() - recordingStartTime) / 1000);
+        updateStatus(`Recording ${formatTime(elapsed)}`);
+      }
+    }, 1000);
+  };
+
+  // Stop recording timer
+  const stopTimer = () => {
+    if (timerIntervalId) {
+      clearInterval(timerIntervalId);
+      timerIntervalId = null;
+    }
+    recordingStartTime = null;
+  };
 
   // Inject styles if not already present
   const styleId = 'heydev-voice-button-styles';
@@ -377,6 +420,7 @@ export function createVoiceButton(
       // works even if onend fires before onstart (browser quirk)
       recording = true;
       updateUI();
+      startTimer();
       if (onRecordingStart) {
         onRecordingStart();
       }
@@ -505,6 +549,8 @@ export function createVoiceButton(
 
     recording = false;
     intentionallyStopped = true; // Mark as intentionally stopped to prevent restart
+    stopTimer();
+    updateStatus(null);
 
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -585,6 +631,7 @@ export function createVoiceButton(
       mediaRecorder.start(1000); // Collect data every second
       recording = true;
       updateUI();
+      startTimer();
 
       if (onRecordingStart) {
         onRecordingStart();
@@ -627,6 +674,7 @@ export function createVoiceButton(
     if (!recording) return;
 
     recording = false;
+    stopTimer();
 
     if (timeoutId) {
       clearTimeout(timeoutId);
@@ -648,13 +696,14 @@ export function createVoiceButton(
     if (!transcribeEndpoint) {
       console.error('No transcribe endpoint configured for fallback mode');
       if (onError) {
-        onError('Transcription not configured');
+        onError('Voice transcription is not available');
       }
       return;
     }
 
     transcribing = true;
     updateUI();
+    updateStatus('Processing audio...');
 
     if (onTranscribingStart) {
       onTranscribingStart();
@@ -675,15 +724,31 @@ export function createVoiceButton(
         formData.append('session_id', getSessionId());
       }
 
+      // Build request headers
+      const headers: Record<string, string> = {};
+      if (apiKey) {
+        headers['X-API-Key'] = apiKey;
+      }
+
       // Send to server
       const response = await fetch(transcribeEndpoint, {
         method: 'POST',
+        headers,
         body: formData,
       });
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server error: ${response.status}`);
+        // Transform server errors to user-friendly messages
+        const serverError = errorData.error || '';
+        if (serverError.includes('API key')) {
+          throw new Error('Voice transcription is temporarily unavailable');
+        } else if (serverError.includes('Rate limit')) {
+          throw new Error('Too many recordings. Please wait a moment and try again.');
+        } else if (response.status >= 500) {
+          throw new Error('Voice service error. Please try again.');
+        }
+        throw new Error(serverError || 'Failed to process recording');
       }
 
       const data = await response.json();
@@ -694,12 +759,15 @@ export function createVoiceButton(
     } catch (error) {
       console.error('Transcription error:', error);
       if (onError) {
-        onError(error instanceof Error ? error.message : 'Transcription failed');
+        // Provide user-friendly error message
+        const errorMessage = error instanceof Error ? error.message : 'Failed to process recording';
+        onError(errorMessage);
       }
     } finally {
       transcribing = false;
       audioChunks = [];
       updateUI();
+      updateStatus(null);
 
       if (onTranscribingEnd) {
         onTranscribingEnd();
@@ -764,6 +832,7 @@ export function createVoiceButton(
       if (mediaStream) {
         mediaStream.getTracks().forEach((track) => track.stop());
       }
+      stopTimer(); // Clean up timer interval
       button.removeEventListener('click', toggleRecording);
       element.remove();
     },
