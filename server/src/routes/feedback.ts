@@ -104,7 +104,7 @@ feedbackRoutes.post('/', async (c) => {
     });
 
     return c.json({
-      conversation_id: conversation.id,
+      conversation_id: String(conversation.id),
     });
   } catch (error) {
     console.error('Feedback submission error:', error);

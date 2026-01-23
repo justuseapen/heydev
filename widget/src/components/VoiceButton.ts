@@ -368,12 +368,18 @@ export function createVoiceButton(
       intentionallyStopped = false;
       restartAttempts = 0;
 
+      // Set recording state BEFORE calling start() to ensure auto-restart logic
+      // works even if onend fires before onstart (browser quirk)
+      recording = true;
+      updateUI();
+      if (onRecordingStart) {
+        onRecordingStart();
+      }
+
       recognition.onstart = () => {
-        recording = true;
-        updateUI();
-        if (onRecordingStart) {
-          onRecordingStart();
-        }
+        // Recording state already set - this confirms successful start
+        // Reset restart attempts on successful start
+        restartAttempts = 0;
       };
 
       recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -441,6 +447,9 @@ export function createVoiceButton(
         }
       }, maxDuration * 1000);
     } catch (error) {
+      // Reset state on error since we set it before calling start()
+      recording = false;
+      updateUI();
       console.error('Failed to start speech recognition:', error);
       if (onError) {
         onError('Failed to start speech recognition');
