@@ -1,12 +1,13 @@
 /**
  * HeyDev Screenshot Button Component
- * A button for capturing screenshots with html2canvas
+ * A button for capturing screenshots with html2canvas-pro
  * Uses dynamic import to reduce initial bundle size
+ * Note: html2canvas-pro supports modern CSS color functions (oklch, oklab, etc.)
  */
 
-import type html2canvasModule from 'html2canvas';
+import type html2canvasModule from 'html2canvas-pro';
 
-// html2canvas is dynamically imported when needed
+// html2canvas-pro is dynamically imported when needed
 type Html2CanvasType = typeof html2canvasModule;
 
 /** CSS styles for the screenshot button and preview */
@@ -248,23 +249,24 @@ export function createScreenshotButton(
     updateUI();
 
     try {
-      // Load html2canvas from CDN if not already loaded
+      // Load html2canvas-pro from CDN if not already loaded
       // This keeps the bundle small while still providing screenshot functionality
+      // html2canvas-pro supports modern CSS color functions (oklch, oklab, lab, lch, color())
       let html2canvas = (window as unknown as { html2canvas?: Html2CanvasType }).html2canvas;
 
       if (!html2canvas) {
-        // Load html2canvas from CDN
+        // Load html2canvas-pro from CDN (supports modern CSS color functions like oklch)
         await new Promise<void>((resolve, reject) => {
           const script = document.createElement('script');
-          script.src = 'https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js';
+          script.src = 'https://cdn.jsdelivr.net/npm/html2canvas-pro@1.6.6/dist/html2canvas-pro.min.js';
           script.onload = () => resolve();
-          script.onerror = () => reject(new Error('Failed to load html2canvas'));
+          script.onerror = () => reject(new Error('Failed to load html2canvas-pro'));
           document.head.appendChild(script);
         });
         html2canvas = (window as unknown as { html2canvas?: Html2CanvasType }).html2canvas;
 
         if (!html2canvas) {
-          throw new Error('html2canvas failed to initialize');
+          throw new Error('html2canvas-pro failed to initialize');
         }
       }
 

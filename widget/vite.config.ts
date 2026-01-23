@@ -26,8 +26,8 @@ export default defineConfig({
     minify: 'esbuild',
     // Bundle size optimization
     rollupOptions: {
-      // html2canvas is loaded from CDN at runtime, not bundled
-      external: ['html2canvas'],
+      // html2canvas-pro is loaded from CDN at runtime, not bundled
+      external: ['html2canvas-pro'],
       output: {
         // Ensure CSS is inlined (no external CSS file)
         // For IIFE, we don't need to worry about exports
