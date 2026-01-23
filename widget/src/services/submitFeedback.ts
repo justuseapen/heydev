@@ -137,7 +137,8 @@ async function submitToBackend(
     throw new Error('Feedback response missing conversation_id');
   }
 
-  return data.conversation_id;
+  // Ensure conversation_id is a string (backend may return number)
+  return String(data.conversation_id);
 }
 
 /**
