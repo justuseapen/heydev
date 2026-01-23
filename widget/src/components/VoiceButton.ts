@@ -741,10 +741,12 @@ export function createVoiceButton(
         const errorData = await response.json().catch(() => ({}));
         // Transform server errors to user-friendly messages
         const serverError = errorData.error || '';
-        if (serverError.includes('API key')) {
-          throw new Error('Voice transcription is temporarily unavailable');
+        if (serverError.includes('not configured')) {
+          throw new Error('Voice transcription is not available.');
+        } else if (serverError.includes('API key')) {
+          throw new Error('Voice transcription is temporarily unavailable.');
         } else if (serverError.includes('Rate limit')) {
-          throw new Error('Too many recordings. Please wait a moment and try again.');
+          throw new Error('Too many recordings. Please wait a moment.');
         } else if (response.status >= 500) {
           throw new Error('Voice service error. Please try again.');
         }

@@ -145,6 +145,12 @@ transcribeRoutes.post('/', async (c) => {
   } catch (error) {
     console.error('Transcription error:', error);
 
+    // Check if OPENAI_API_KEY is not configured
+    if (error instanceof Error && error.message.includes('OPENAI_API_KEY')) {
+      console.error('OPENAI_API_KEY is not configured on the server');
+      return c.json({ error: 'Voice transcription is not configured on the server.' }, 503);
+    }
+
     // Check for specific OpenAI API errors
     if (error instanceof OpenAI.APIError) {
       if (error.status === 401) {
