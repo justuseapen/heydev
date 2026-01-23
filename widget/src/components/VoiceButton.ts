@@ -252,13 +252,12 @@ export function createVoiceButton(
   // Check for MediaRecorder fallback support
   const hasFallbackSupport = isMediaRecorderSupported();
 
-  // Determine which mode to use
-  const useNativeMode = hasNativeSupport;
-  const useFallbackMode = !hasNativeSupport && hasFallbackSupport;
+  // Determine which mode to use (can be overridden at runtime)
   const isSupported = hasNativeSupport || hasFallbackSupport;
 
   // State
   let recording = false;
+  let nativeModeFailed = false; // Track if native mode failed (e.g., network error)
   let transcribing = false;
   let recognition: SpeechRecognition | null = null;
   let mediaRecorder: MediaRecorder | null = null;
@@ -358,6 +357,12 @@ export function createVoiceButton(
   const startNativeRecording = () => {
     if (recording || !SpeechRecognitionClass) return;
 
+    // Check if we're on a secure context (HTTPS or localhost)
+    // Web Speech API requires secure context in most browsers
+    if (!window.isSecureContext) {
+      console.warn('Speech recognition may not work on non-HTTPS connections');
+    }
+
     try {
       recognition = new SpeechRecognitionClass();
       recognition.continuous = true;
@@ -407,8 +412,39 @@ export function createVoiceButton(
         if (event.error === 'no-speech') {
           return;
         }
+
+        // Provide user-friendly error messages
+        let errorMessage = event.error;
+        switch (event.error) {
+          case 'not-allowed':
+            errorMessage = 'Microphone access denied. Please allow microphone access and try again.';
+            break;
+          case 'audio-capture':
+            errorMessage = 'No microphone found. Please connect a microphone and try again.';
+            break;
+          case 'network':
+            // Network error - fall back to MediaRecorder + Whisper API
+            if (hasFallbackSupport && transcribeEndpoint) {
+              console.log('Web Speech API network error, falling back to MediaRecorder + Whisper');
+              nativeModeFailed = true;
+              intentionallyStopped = true;
+              stopNativeRecording();
+              // Automatically start fallback recording
+              startFallbackRecording();
+              return;
+            }
+            errorMessage = 'Network error. Speech recognition requires an internet connection.';
+            break;
+          case 'aborted':
+            errorMessage = 'Recording was interrupted. Please try again.';
+            break;
+          case 'service-not-allowed':
+            errorMessage = 'Speech service not available. Please try again later.';
+            break;
+        }
+
         if (onError) {
-          onError(event.error);
+          onError(errorMessage);
         }
         intentionallyStopped = true; // Prevent restart on errors (except no-speech)
         stopNativeRecording();
@@ -452,7 +488,14 @@ export function createVoiceButton(
       updateUI();
       console.error('Failed to start speech recognition:', error);
       if (onError) {
-        onError('Failed to start speech recognition');
+        // Check for common issues
+        if (!window.isSecureContext) {
+          onError('Voice recording requires HTTPS. Please use a secure connection.');
+        } else if (error instanceof DOMException && error.name === 'NotAllowedError') {
+          onError('Microphone access denied. Please allow microphone access and try again.');
+        } else {
+          onError('Failed to start voice recording. Please try again.');
+        }
       }
     }
   };
@@ -556,10 +599,25 @@ export function createVoiceButton(
     } catch (error) {
       console.error('Failed to start recording:', error);
       if (onError) {
-        if (error instanceof DOMException && error.name === 'NotAllowedError') {
-          onError('Microphone access denied');
+        if (error instanceof DOMException) {
+          switch (error.name) {
+            case 'NotAllowedError':
+              onError('Microphone access denied. Please allow microphone access and try again.');
+              break;
+            case 'NotFoundError':
+              onError('No microphone found. Please connect a microphone and try again.');
+              break;
+            case 'NotReadableError':
+              onError('Microphone is in use by another application.');
+              break;
+            case 'OverconstrainedError':
+              onError('No suitable microphone found.');
+              break;
+            default:
+              onError(`Microphone error: ${error.message}`);
+          }
         } else {
-          onError('Failed to start recording');
+          onError('Failed to start recording. Please try again.');
         }
       }
     }
@@ -652,18 +710,23 @@ export function createVoiceButton(
   // =========================================================
   // Public API
   // =========================================================
+  // Determine which mode to use at runtime
+  const shouldUseNativeMode = () => hasNativeSupport && !nativeModeFailed;
+  const shouldUseFallbackMode = () => hasFallbackSupport && (nativeModeFailed || !hasNativeSupport);
+
   const startRecording = () => {
-    if (useNativeMode) {
+    if (shouldUseNativeMode()) {
       startNativeRecording();
-    } else if (useFallbackMode) {
+    } else if (shouldUseFallbackMode()) {
       startFallbackRecording();
     }
   };
 
   const stopRecording = () => {
-    if (useNativeMode) {
+    // Stop whichever mode is currently active
+    if (recognition) {
       stopNativeRecording();
-    } else if (useFallbackMode) {
+    } else if (mediaRecorder) {
       stopFallbackRecording();
     }
   };
@@ -688,7 +751,7 @@ export function createVoiceButton(
     button,
     element,
     isSupported: () => isSupported,
-    isFallbackMode: () => useFallbackMode,
+    isFallbackMode: () => shouldUseFallbackMode(),
     isRecording: () => recording,
     isTranscribing: () => transcribing,
     startRecording,

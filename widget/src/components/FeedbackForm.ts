@@ -356,6 +356,13 @@ export function createFeedbackForm(
     onTranscript: (text) => {
       textInput.setValue(text);
     },
+    onRecordingStart: () => {
+      clearStatus();
+    },
+    onError: (error) => {
+      console.error('Voice recording error:', error);
+      showStatus(`Voice error: ${error}`, 'error');
+    },
   });
 
   // Add form to container
