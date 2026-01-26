@@ -21,7 +21,7 @@ The tool is designed as a micro-service: minimal footprint, single script includ
 **Description:** As a developer, I want to add HeyDev to my app with a single script tag so that setup takes under 1 minute.
 
 **Acceptance Criteria:**
-- [ ] Widget loads via `<script src="https://cdn.heydev.io/widget.js" data-api-key="xxx"></script>`
+- [ ] Widget loads via `<script src="https://heydev.io/widget.js" data-api-key="xxx"></script>`
 - [ ] No additional dependencies required
 - [ ] Widget initializes automatically on page load
 - [ ] Works on any domain without CORS configuration

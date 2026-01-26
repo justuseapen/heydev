@@ -32,3 +32,17 @@ uploads/
 *.sqlite3
 *.db
 server/data/
+
+# Claude Code local settings (user-specific)
+.claude/settings.local.json
+.claude/state/
+
+# Ralph automation state (local only)
+scripts/ralph/.last-branch
+scripts/ralph/archive/
+
+# Archived PRD work (Ralph automation artifacts)
+archive/
+
+# Editor/terminal context
+WARP.md
