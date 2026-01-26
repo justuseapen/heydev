@@ -9,5 +9,20 @@
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
+
+    <!-- HeyDev Widget - Dogfooding our own product -->
+    <script type="module">
+      const apiKey = import.meta.env.VITE_HEYDEV_API_KEY;
+      if (apiKey) {
+        const script = document.createElement('script');
+        script.src = 'https://heydev.io/widget.js';
+        script.dataset.apiKey = apiKey;
+        script.dataset.errorTracking = 'true';
+        script.dataset.captureExceptions = 'true';
+        script.dataset.captureNetwork = 'true';
+        script.async = true;
+        document.body.appendChild(script);
+      }
+    </script>
   </body>
 </html>

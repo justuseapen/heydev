@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { CreateProjectModal } from './CreateProjectModal';
 
 const API_BASE = import.meta.env.VITE_API_URL || '';
 
@@ -17,20 +18,21 @@ interface ProjectSelectorProps {
   refreshKey?: number;
 }
 
-export function ProjectSelector({ selectedProjectId, onSelectProject, onCreateProject, refreshKey }: ProjectSelectorProps) {
+export function ProjectSelector({ selectedProjectId, onSelectProject, refreshKey }: ProjectSelectorProps) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOpen, setIsOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
+  const fetchProjects = useCallback(() => {
     fetch(`${API_BASE}/api/projects`, { credentials: 'include' })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch projects');
         return res.json();
       })
       .then((data) => {
-        setProjects(data);
+        setProjects(data.projects || data);
       })
       .catch((err) => {
         console.error('Failed to load projects:', err);
@@ -39,6 +41,10 @@ export function ProjectSelector({ selectedProjectId, onSelectProject, onCreatePr
         setLoading(false);
       });
   }, [refreshKey]);
+
+  useEffect(() => {
+    fetchProjects();
+  }, [fetchProjects]);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -51,6 +57,11 @@ export function ProjectSelector({ selectedProjectId, onSelectProject, onCreatePr
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  const handleProjectCreated = (projectId: number) => {
+    fetchProjects();
+    onSelectProject(projectId);
+  };
+
   const selectedProject = projects.find(p => p.id === selectedProjectId);
   const displayText = selectedProject ? selectedProject.name : 'All Projects';
 
@@ -62,17 +73,73 @@ export function ProjectSelector({ selectedProjectId, onSelectProject, onCreatePr
     );
   }
 
-  // If no projects and no create option, hide completely
-  if (projects.length === 0 && !onCreateProject) {
-    return null;
+  // Show create button if no projects exist
+  if (projects.length === 0) {
+    return (
+      <>
+        <button
+          onClick={() => setIsCreateModalOpen(true)}
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          Create Project
+        </button>
+        <CreateProjectModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onProjectCreated={handleProjectCreated}
+        />
+      </>
+    );
   }
 
-  // If only one project and no create option, show static text
-  if (projects.length === 1 && !onCreateProject) {
+  // If only one project, show it with option to create more
+  if (projects.length === 1) {
     return (
-      <div className="inline-flex items-center px-3 py-2 text-sm text-gray-700">
-        <span className="font-medium">{projects[0].name}</span>
-      </div>
+      <>
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={() => setIsOpen(!isOpen)}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500"
+          >
+            <span>{projects[0].name}</span>
+            <svg
+              className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+
+          {isOpen && (
+            <div className="absolute z-10 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg">
+              <div className="py-1">
+                <button
+                  onClick={() => {
+                    setIsOpen(false);
+                    setIsCreateModalOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-gray-100 flex items-center gap-2"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  Create New Project
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        <CreateProjectModal
+          isOpen={isCreateModalOpen}
+          onClose={() => setIsCreateModalOpen(false)}
+          onProjectCreated={handleProjectCreated}
+        />
+      </>
     );
   }
 
@@ -122,26 +189,28 @@ export function ProjectSelector({ selectedProjectId, onSelectProject, onCreatePr
                 {project.name}
               </button>
             ))}
-            {onCreateProject && (
-              <>
-                <div className="border-t border-gray-100" />
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    onCreateProject();
-                  }}
-                  className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-indigo-50 flex items-center gap-2"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                  New Project
-                </button>
-              </>
-            )}
+            <div className="border-t border-gray-100" />
+            <button
+              onClick={() => {
+                setIsOpen(false);
+                setIsCreateModalOpen(true);
+              }}
+              className="w-full text-left px-4 py-2 text-sm text-indigo-600 hover:bg-gray-100 flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Create New Project
+            </button>
           </div>
         </div>
       )}
+
+      <CreateProjectModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onProjectCreated={handleProjectCreated}
+      />
     </div>
   );
 }

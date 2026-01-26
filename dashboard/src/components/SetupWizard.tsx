@@ -70,16 +70,29 @@ export function SetupWizard({ currentStep, onStepChange }: SetupWizardProps) {
     setCompletedSteps(completed);
   }, [currentStep]);
 
-  // Fetch API key info on mount
+  // Fetch API key info on mount - checks if user has any projects with API keys
   useEffect(() => {
     const fetchApiKeyInfo = async () => {
       try {
-        const response = await fetch(`${API_URL}/api/keys`, {
+        const response = await fetch(`${API_URL}/api/projects`, {
           credentials: 'include',
         });
         if (response.ok) {
           const data = await response.json();
-          setApiKeyInfo(data);
+          const projects = data.projects || [];
+
+          // Check if any project has an API key
+          const projectWithKey = projects.find((p: { hasApiKey: boolean }) => p.hasApiKey);
+
+          if (projectWithKey) {
+            setApiKeyInfo({
+              hasKey: true,
+              keyPrefix: projectWithKey.apiKeyPrefix,
+              createdAt: projectWithKey.createdAt,
+            });
+          } else {
+            setApiKeyInfo({ hasKey: false, keyPrefix: undefined, createdAt: undefined });
+          }
         }
       } catch (error) {
         console.error('Failed to fetch API key info:', error);
@@ -106,15 +119,18 @@ export function SetupWizard({ currentStep, onStepChange }: SetupWizardProps) {
     }
   };
 
-  // API Key generation handler
+  // API Key generation handler - creates a default project which includes an API key
   const handleGenerateKey = useCallback(async () => {
     setIsGenerating(true);
     setApiKeyError(null);
 
     try {
-      const response = await fetch(`${API_URL}/api/keys`, {
+      // Create a default project (POST /api/projects creates both project + API key)
+      const response = await fetch(`${API_URL}/api/projects`, {
         method: 'POST',
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'My First Project' }),
       });
 
       const data = await response.json();
@@ -124,14 +140,15 @@ export function SetupWizard({ currentStep, onStepChange }: SetupWizardProps) {
         return;
       }
 
+      // Project creation returns apiKey and apiKeyPrefix
       setGeneratedKey({
-        key: data.key,
-        keyPrefix: data.keyPrefix,
+        key: data.apiKey,
+        keyPrefix: data.apiKeyPrefix,
         createdAt: data.createdAt,
       });
       setApiKeyInfo({
         hasKey: true,
-        keyPrefix: data.keyPrefix,
+        keyPrefix: data.apiKeyPrefix,
         createdAt: data.createdAt,
       });
     } catch {
@@ -162,47 +179,57 @@ export function SetupWizard({ currentStep, onStepChange }: SetupWizardProps) {
     }
   }, [generatedKey]);
 
-  // Regenerate API key (DELETE then POST)
+  // Regenerate API key for the user's first project
   const handleRegenerateKey = useCallback(async () => {
     setIsRegenerating(true);
     setApiKeyError(null);
 
     try {
-      // First, delete the existing key
-      const deleteResponse = await fetch(`${API_URL}/api/keys`, {
-        method: 'DELETE',
+      // First, get the user's projects to find the project ID
+      const projectsResponse = await fetch(`${API_URL}/api/projects`, {
         credentials: 'include',
       });
 
-      if (!deleteResponse.ok) {
-        const data = await deleteResponse.json();
-        setApiKeyError(data.error || 'Failed to delete existing key');
+      if (!projectsResponse.ok) {
+        setApiKeyError('Failed to fetch projects');
         setShowRegenerateModal(false);
         return;
       }
 
-      // Then, generate a new key
-      const createResponse = await fetch(`${API_URL}/api/keys`, {
+      const projectsData = await projectsResponse.json();
+      const projects = projectsData.projects || [];
+
+      if (projects.length === 0) {
+        setApiKeyError('No project found. Please generate an API key first.');
+        setShowRegenerateModal(false);
+        return;
+      }
+
+      // Use the first project (default project created during onboarding)
+      const projectId = projects[0].id;
+
+      // Regenerate the API key for this project
+      const regenerateResponse = await fetch(`${API_URL}/api/projects/${projectId}/regenerate-key`, {
         method: 'POST',
         credentials: 'include',
       });
 
-      const data = await createResponse.json();
+      const data = await regenerateResponse.json();
 
-      if (!createResponse.ok) {
-        setApiKeyError(data.error || 'Failed to generate new API key');
+      if (!regenerateResponse.ok) {
+        setApiKeyError(data.error || 'Failed to regenerate API key');
         setShowRegenerateModal(false);
         return;
       }
 
       setGeneratedKey({
-        key: data.key,
-        keyPrefix: data.keyPrefix,
+        key: data.apiKey,
+        keyPrefix: data.apiKeyPrefix,
         createdAt: data.createdAt,
       });
       setApiKeyInfo({
         hasKey: true,
-        keyPrefix: data.keyPrefix,
+        keyPrefix: data.apiKeyPrefix,
         createdAt: data.createdAt,
       });
       setShowRegenerateModal(false);
