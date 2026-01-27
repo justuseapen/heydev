@@ -7,6 +7,7 @@ import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
 import { db, conversations, messages } from '../db/index.js';
 import crypto from 'crypto';
+import { routeToChannels } from '../services/channelRouter.js';
 
 /**
  * Error details captured from the browser
@@ -191,6 +192,25 @@ errorsRoutes.post('/', async (c) => {
       conversationId: conversation.id,
       direction: 'inbound',
       content: messageContent,
+    });
+
+    // Route to notification channels (non-blocking)
+    // For errors, we format the message as feedback text
+    const errorText = body.error.type === 'exception'
+      ? `Exception: ${body.error.message}${body.error.stack ? `\n\nStack trace:\n${body.error.stack}` : ''}`
+      : `Network Error: ${body.error.method || 'GET'} ${body.error.url || 'unknown'} - ${body.error.status || 'failed'}: ${body.error.message}`;
+
+    routeToChannels(
+      apiKey.id,
+      {
+        text: errorText,
+        screenshot_url: null,
+        audio_url: null,
+      },
+      body.context,
+      body.session_id
+    ).catch((err) => {
+      console.error('Error routing to notification channels:', err);
     });
 
     return c.json({ success: true });

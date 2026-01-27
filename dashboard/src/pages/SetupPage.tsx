@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { WebhookConfigModal } from '../components/WebhookConfigModal';
 import { EmailConfigModal } from '../components/EmailConfigModal';
+import { SlackConfigModal, type SlackConfig } from '../components/SlackConfigModal';
 import { SetupWizard } from '../components/SetupWizard';
 
 // In production, API is served from same origin (relative path). In dev, use VITE_API_URL or localhost.
@@ -134,6 +135,8 @@ export function SetupPage() {
   const [webhookConfig, setWebhookConfig] = useState<WebhookConfig | undefined>(undefined);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailConfig, setEmailConfig] = useState<EmailConfig | undefined>(undefined);
+  const [slackModalOpen, setSlackModalOpen] = useState(false);
+  const [slackConfig, setSlackConfig] = useState<SlackConfig | undefined>(undefined);
   const [currentStep, setCurrentStep] = useState(1);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -327,6 +330,11 @@ export function SetupPage() {
       const config = emailChannel?.config as EmailConfig | undefined;
       setEmailConfig(config ? { ...config, verified: emailChannel?.verified } : undefined);
       setEmailModalOpen(true);
+    } else if (channelType === 'slack') {
+      // Find the slack channel to get its current config
+      const slackChannel = channels.find((ch) => ch.type === 'slack');
+      setSlackConfig(slackChannel?.config as SlackConfig | undefined);
+      setSlackModalOpen(true);
     } else {
       // Other channels will be implemented in future stories
       alert(`Configure ${CHANNEL_META[channelType]?.name || channelType} - Coming soon!`);
@@ -386,6 +394,43 @@ export function SetupPage() {
           : ch
       )
     );
+  };
+
+  const handleSaveSlackConfig = async (config: SlackConfig) => {
+    const response = await fetch(`${API_URL}/api/channels`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'slack',
+        config,
+        enabled: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Failed to save configuration');
+    }
+
+    const data = await response.json();
+
+    // Update local state - cast config to Record<string, unknown> for ChannelInfo compatibility
+    setChannels((prev) =>
+      prev.map((ch) =>
+        ch.type === 'slack'
+          ? {
+              ...ch,
+              enabled: true,
+              configured: true,
+              verified: true,
+              config: config as unknown as Record<string, unknown>,
+            }
+          : ch
+      )
+    );
+
+    return data;
   };
 
   // Handle step changes from the wizard
@@ -754,6 +799,14 @@ export function SetupPage() {
         onClose={() => setEmailModalOpen(false)}
         onSave={handleSaveEmailConfig}
         initialConfig={emailConfig}
+      />
+
+      {/* Slack Configuration Modal */}
+      <SlackConfigModal
+        isOpen={slackModalOpen}
+        onClose={() => setSlackModalOpen(false)}
+        onSave={handleSaveSlackConfig}
+        initialConfig={slackConfig}
       />
     </div>
   );

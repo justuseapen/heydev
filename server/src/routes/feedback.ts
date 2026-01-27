@@ -6,6 +6,7 @@
 import { Hono } from 'hono';
 import { eq, and } from 'drizzle-orm';
 import { db, conversations, messages } from '../db/index.js';
+import { routeToChannels } from '../services/channelRouter.js';
 
 /**
  * Context object captured from the widget
@@ -101,6 +102,20 @@ feedbackRoutes.post('/', async (c) => {
       conversationId: conversation.id,
       direction: 'inbound',
       content: messageContent,
+    });
+
+    // Route to notification channels (non-blocking)
+    routeToChannels(
+      apiKey.id,
+      {
+        text: body.text,
+        screenshot_url: body.screenshot_url,
+        audio_url: body.audio_url,
+      },
+      body.context,
+      body.session_id
+    ).catch((err) => {
+      console.error('Error routing to notification channels:', err);
     });
 
     return c.json({

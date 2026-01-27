@@ -758,6 +758,8 @@ function Step3Notifications({ onBack, onContinue, onSkip }: Step3NotificationsPr
   const [emailAddress, setEmailAddress] = useState('');
   const [webhookEnabled, setWebhookEnabled] = useState(false);
   const [webhookUrl, setWebhookUrl] = useState('');
+  const [slackEnabled, setSlackEnabled] = useState(false);
+  const [slackWebhookUrl, setSlackWebhookUrl] = useState('');
 
   return (
     <div className="py-4">
@@ -880,13 +882,13 @@ function Step3Notifications({ onBack, onContinue, onSkip }: Step3NotificationsPr
           )}
         </div>
 
-        {/* Slack - Coming soon */}
-        <div className="border border-gray-200 rounded-lg p-4 opacity-60">
-          <div className="flex items-center justify-between">
+        {/* Slack notification card */}
+        <div className="border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-gray-100 rounded-lg flex items-center justify-center">
+              <div className="h-10 w-10 bg-purple-100 rounded-lg flex items-center justify-center">
                 <svg
-                  className="h-5 w-5 text-gray-600"
+                  className="h-5 w-5 text-purple-600"
                   viewBox="0 0 24 24"
                   fill="currentColor"
                 >
@@ -895,13 +897,49 @@ function Step3Notifications({ onBack, onContinue, onSkip }: Step3NotificationsPr
               </div>
               <div>
                 <h4 className="text-sm font-medium text-gray-900">Slack</h4>
-                <p className="text-xs text-gray-500">Connect to Slack</p>
+                <p className="text-xs text-gray-500">Get notified via Slack</p>
               </div>
             </div>
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
-              Coming soon
-            </span>
+            {/* Toggle switch */}
+            <button
+              type="button"
+              role="switch"
+              aria-checked={slackEnabled}
+              onClick={() => setSlackEnabled(!slackEnabled)}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-600 focus:ring-offset-2 ${
+                slackEnabled ? 'bg-indigo-600' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  slackEnabled ? 'translate-x-5' : 'translate-x-0'
+                }`}
+              />
+            </button>
           </div>
+          {/* Slack webhook URL input field */}
+          {slackEnabled && (
+            <div className="mt-3">
+              <input
+                type="url"
+                placeholder="https://hooks.slack.com/services/..."
+                value={slackWebhookUrl}
+                onChange={(e) => setSlackWebhookUrl(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 font-mono"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                <a
+                  href="https://api.slack.com/apps"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-indigo-600 hover:text-indigo-700"
+                >
+                  Create an Incoming Webhook
+                </a>
+                {' '}in Slack to get this URL
+              </p>
+            </div>
+          )}
         </div>
 
         {/* SMS - Coming soon */}

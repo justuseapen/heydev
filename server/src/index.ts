@@ -22,12 +22,14 @@ import { feedbackApiRoutes } from './routes/feedbackApi.js';
 import { projectsRoutes } from './routes/projects.js';
 import { registerWebhookSender } from './services/webhookSender.js';
 import { registerEmailSender } from './services/emailNotificationSender.js';
+import { registerSlackSender } from './services/slackNotificationSender.js';
 
 export const VERSION = '0.1.0';
 
 // Register notification channel senders
 registerWebhookSender();
 registerEmailSender();
+registerSlackSender();
 
 const app = new Hono();
 

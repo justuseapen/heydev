@@ -527,6 +527,111 @@ channelsRoutes.post('/email/verify', async (c) => {
 });
 
 /**
+ * POST /api/channels/slack/test
+ * Send a test message to verify the Slack webhook configuration
+ */
+channelsRoutes.post('/slack/test', async (c) => {
+  const sessionCookie = getCookie(c, 'heydev_session');
+  const user = await getAuthenticatedUser(sessionCookie);
+
+  if (!user) {
+    return c.json({ error: 'Not authenticated' }, 401);
+  }
+
+  const apiKey = await getUserApiKey(user.id);
+
+  if (!apiKey) {
+    return c.json({ error: 'API key required' }, 400);
+  }
+
+  const body = await c.req.json() as {
+    webhookUrl: string;
+  };
+
+  if (!body.webhookUrl) {
+    return c.json({ error: 'Slack webhook URL is required' }, 400);
+  }
+
+  // Validate URL format (Slack webhooks start with https://hooks.slack.com/)
+  if (!body.webhookUrl.startsWith('https://hooks.slack.com/')) {
+    return c.json({ error: 'Invalid Slack webhook URL. It should start with https://hooks.slack.com/' }, 400);
+  }
+
+  // Build test payload with Block Kit
+  const testPayload = {
+    text: 'Test message from HeyDev',
+    blocks: [
+      {
+        type: 'header',
+        text: {
+          type: 'plain_text',
+          text: 'HeyDev Test Message',
+          emoji: true,
+        },
+      },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: 'Your Slack integration is working! You will receive feedback notifications in this channel.',
+        },
+      },
+      {
+        type: 'context',
+        elements: [
+          {
+            type: 'mrkdwn',
+            text: `Sent at ${new Date().toLocaleString()} | via <https://heydev.io|HeyDev>`,
+          },
+        ],
+      },
+    ],
+  };
+
+  try {
+    // Create abort controller for timeout (5 seconds)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+    const response = await fetch(body.webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(testPayload),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      return c.json({
+        success: true,
+        message: 'Test message sent successfully! Check your Slack channel.',
+      });
+    }
+
+    const errorText = await response.text();
+    return c.json({
+      success: false,
+      error: `Slack API error: ${response.status} - ${errorText}`,
+    });
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      return c.json({
+        success: false,
+        error: 'Request timed out after 5 seconds',
+      });
+    }
+
+    return c.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+/**
  * GET /api/channels/:type
  * Get a specific channel's configuration
  */
